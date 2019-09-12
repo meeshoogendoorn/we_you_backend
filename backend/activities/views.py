@@ -17,22 +17,26 @@ from activities.serializers import ColourThemeSerializer
 
 
 class ColourThemeViewSet(ModelViewSet):
-    queryset = ColourTheme
+    queryset = ColourTheme.objects.all()
     serializer_class = ColourThemeSerializer
 
     permission_classes = (
         IsAuthenticated, IsEmployer | IsEmployeeAndReadOnly | IsAdmin
     )
 
-    def get_serializer_context(self):
+    def get_serializer(self, *args, **kwargs):
         """
         Overridden to add the company when possible.
 
-        We can't add
+        We can't add a company for a administrator because we
+        won't require it to have one.
         """
-        context = ModelViewSet.get_serializer_context(self)
+        serializer_class = self.get_serializer_class()
+        kwargs["context"] = self.get_serializer_context()
 
-        if is_administrator(self.request.user):
-            return context
+        if not is_administrator(self.request.user):
+            company = self.request.user.compay
+            kwargs = {**kwargs, "company": company}
 
-        company =
+        return serializer_class(*args, **kwargs)
+
