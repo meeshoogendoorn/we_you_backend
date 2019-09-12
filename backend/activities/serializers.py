@@ -5,7 +5,6 @@ __all__ = (
 )
 
 from rest_framework.serializers import ModelSerializer
-from rest_framework.serializers import HyperlinkedRelatedField
 
 from activities.models import Answer
 from activities.models import Question
@@ -14,6 +13,7 @@ from activities.models import QuestionSet
 from activities.models import QuestionTheme
 
 from companies.models import Company
+from utilities.fields import HyperlinkedRelatedReadField
 
 
 class ColourThemeSerializer(ModelSerializer):
@@ -24,9 +24,9 @@ class ColourThemeSerializer(ModelSerializer):
     """
     class Meta:
         model = ColourTheme
-        fields = ("company", "primary", "accent")
+        fields = ("id", "company", "primary", "accent")
 
-    company = HyperlinkedRelatedField(
+    company = HyperlinkedRelatedReadField(
         queryset=Company.objects.all(),
         view_name="company-detail",
     )

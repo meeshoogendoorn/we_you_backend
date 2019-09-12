@@ -10,5 +10,5 @@ class Company(Model):
 
 class Member(Model):
     """Connects an accounts.User to a company."""
-    company = OneToOneField(Company, on_delete=CASCADE)
-    account = ForeignKey(User, on_delete=CASCADE)
+    company = OneToOneField(Company, CASCADE)
+    account = ForeignKey(User, CASCADE, related_name="member")

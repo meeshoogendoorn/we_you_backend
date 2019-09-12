@@ -35,7 +35,7 @@ class ColourThemeViewSet(ModelViewSet):
         kwargs["context"] = self.get_serializer_context()
 
         if not is_administrator(self.request.user):
-            company = self.request.user.compay
+            company = self.request.user.member.company
             kwargs = {**kwargs, "company": company}
 
         return serializer_class(*args, **kwargs)
