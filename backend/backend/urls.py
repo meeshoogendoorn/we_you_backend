@@ -13,9 +13,18 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import os
 
 from django.urls import include, path
 
+
 urlpatterns = [
-    path("/accounts/", include("accounts.urls")),
+    path("accounts/", include("accounts.urls")),
+    path("companies/", include("companies.urls")),
+    path("activities/", include("activities.urls")),
 ]
+
+# We add the api prefix within development because
+# we can't re-route the url's easily with runserver
+if bool(int(os.environ.get("DEVELOPMENT", False))):
+    urlpatterns = [path("api/", include(urlpatterns))]

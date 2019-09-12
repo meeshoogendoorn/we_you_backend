@@ -2,11 +2,12 @@
 
 __all__ = (
     "UserFactory",
+    "AuthFactory",
 )
 
-from django.contrib.auth.hashers import make_password
+from factory import DjangoModelFactory, Faker
 
-from factory import DjangoModelFactory, Faker, lazy_attribute
+from knox.models import AuthToken
 
 from accounts.models import User
 
@@ -22,35 +23,55 @@ class UserFactory(DjangoModelFactory):
     class Meta:
         model = User
 
-    first_name = Faker("first_name")
-    last_name = Faker("last_name")
+    email = Faker("email")
+    password = "password"
 
-    @lazy_attribute
-    def username(self):
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
         """
-        Generate a username from the fake first and last name.
+        Overridden to user the managers create_user() method.
 
-        :return: A 'fake' username for this user
-        :rtype: str
-        """
-        return f"{self.first_name}-{self.last_name}".lower()
+        :param model_class: The class of the model to use
+        :type model_class: type of accounts.models.User
 
-    @lazy_attribute
-    def password(self):
-        """
-        Generate the fake password to use, this is always 'password'.
+        :param args: The additional arguments for field values
+        :type args: str | int | bool | datetime.datetime
 
-        :return: The hashed password
-        :rtype: str
-        """
-        return make_password("password")
+        :param args: The additional keyword arguments for field values
+        :type args: str | int | bool | datetime.datetime
 
-    @lazy_attribute
-    def email(self):
+        :return: The newly created user
+        :rtype: accounts.models.User
         """
-        Generate a fake email based on the username.
+        manager = cls._get_manager(model_class)
+        return manager.create_user(*args, **kwargs)
 
-        :return: The email for this user
-        :rtype: str
+
+class AuthFactory(DjangoModelFactory):
+    """Auth token factory for easy model creation."""
+
+    class Meta:
+        model = AuthToken
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
         """
-        return f"{self.username}@example.com"
+        Overridden to append the plain token for usage.
+
+        :param model_class: The class of the model to use
+        :type model_class: type of knox.models.AuthToken
+
+        :param args: The additional arguments for field values
+        :type args: str | int | bool | datetime.datetime
+
+        :param args: The additional keyword arguments for field values
+        :type args: str | int | bool | datetime.datetime
+
+        :return: The newly created token
+        :rtype: knox.models.AuthToken
+        """
+        manager = cls._get_manager(model_class)
+        instance, token = manager.create(*args, **kwargs)
+
+        setattr(instance, "plain", token)
+        return instance

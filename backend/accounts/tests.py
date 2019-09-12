@@ -61,13 +61,13 @@ class ViewSetIntegrationTests(URLPatternsTestCase, APITestCase):
         cls.user = UserFactory()
 
     def test_successful_login(self):
-        headers = construct_headers(self.user.username, "password")
+        headers = construct_headers(self.user.email, "password")
         response = self.client.post(reverse("login"), **headers)
 
         self.assertEqual(status.HTTP_200_OK, response.status_code)
 
     def test_unsuccessful_login(self):
-        headers = construct_headers(self.user.username, "12345678")
+        headers = construct_headers(self.user.email, "12345678")
         response = self.client.post(reverse("login"), **headers)
 
         self.assertEqual(status.HTTP_401_UNAUTHORIZED, response.status_code)

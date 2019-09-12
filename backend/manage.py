@@ -5,7 +5,11 @@ import sys
 
 
 def main():
+    # This is the entry point for development
+    # but completely ignored at production
+    os.environ.setdefault('DEVELOPMENT', "1")
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

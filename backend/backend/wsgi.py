@@ -11,6 +11,9 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
+# This is the entry point for production
+# but completely ignored at development
+os.environ.setdefault('DEVELOPMENT', "0")
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
 application = get_wsgi_application()
