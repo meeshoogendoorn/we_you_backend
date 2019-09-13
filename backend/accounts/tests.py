@@ -2,13 +2,16 @@
 
 import base64
 
-from django.urls import reverse, path
+from django.core import mail
+from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import URLPatternsTestCase, APITestCase
 
-from accounts.views import LoginView
+from accounts.urls import urlpatterns
+from accounts.models import Group, User
 from accounts.factories import UserFactory
+from companies.factories import CompanyFactory
 
 
 def basic_auth_header(username, password):
@@ -52,9 +55,7 @@ def construct_headers(username, password):
 class ViewSetIntegrationTests(URLPatternsTestCase, APITestCase):
     """Tests for account's view-sets."""
 
-    urlpatterns = [
-        path("/login/", LoginView.as_view(), name="login"),
-    ]
+    urlpatterns = urlpatterns
 
     @classmethod
     def setUpTestData(cls):
@@ -71,3 +72,17 @@ class ViewSetIntegrationTests(URLPatternsTestCase, APITestCase):
         response = self.client.post(reverse("login"), **headers)
 
         self.assertEqual(status.HTTP_401_UNAUTHORIZED, response.status_code)
+
+    def test_create_employees(self):
+        self.user.groups.add(Group.objects.get(id=2))
+
+        company = CompanyFactory()
+        members = ["user1@example.com", "user1@example.com"]
+        content = {"company": company.id, "members": members}
+
+        response = self.client.post(reverse("register-employees"), content)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(mail.outbox), 2)
+
+        self.user.groups.

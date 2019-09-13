@@ -4,7 +4,7 @@ import random
 
 from factory import DjangoModelFactory, RelatedFactory, lazy_attribute
 
-from activities.models import ColourTheme
+from companies.models import ColourTheme
 from companies.factories import CompanyFactory
 
 

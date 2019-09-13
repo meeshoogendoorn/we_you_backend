@@ -6,9 +6,27 @@ __all__ = (
 
 from django.urls import path
 
-from accounts.views import LogoutView, LoginView
+from rest_framework.routers import SimpleRouter
 
-urlpatterns = [
-    path("login/", LoginView.as_view()),
-    path("logout/", LogoutView.as_view()),
+from accounts.views import LogoutView, LoginView
+from accounts.views import RegisterEmployerViewSet
+from accounts.views import RegisterEmployeesViewSet
+
+router = SimpleRouter()
+
+router.register(
+    "register-employer/",
+    RegisterEmployerViewSet,
+    "register-employer"
+)
+
+router.register(
+    "register-employees/",
+    RegisterEmployeesViewSet,
+    "register-employees"
+)
+
+urlpatterns = router.urls + [
+    path("login/", LoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
 ]

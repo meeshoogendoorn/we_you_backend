@@ -3,18 +3,15 @@
 __all__ = (
     "Answer",
     "Question",
-    "ColourTheme",
     "QuestionSet",
     "QuestionTheme",
 )
 
 from django.db.models import Model
 from django.db.models.fields import BooleanField
-from django.db.models.fields import BigIntegerField
 from django.db.models.fields import TextField, CharField
 from django.db.models.fields import PositiveSmallIntegerField
 
-from django.db.models.fields.related import OneToOneField
 from django.db.models.fields.related import CASCADE, ForeignKey
 
 from django.core.exceptions import ValidationError
@@ -24,21 +21,6 @@ from django.core.validators import MaxValueValidator
 from accounts.utils import is_employee
 from accounts.models import User
 from companies.models import Company
-
-
-class ColourTheme(Model):
-    """The storage for the colouring theme stored for a company."""
-    company = OneToOneField(Company, CASCADE)
-
-    primary = BigIntegerField(validators=[
-        MinValueValidator(0x000000), MaxValueValidator(0xFFFFFFFF)]
-    )
-
-    accent = BigIntegerField(validators=[
-        MinValueValidator(0x000000), MaxValueValidator(0xFFFFFFFF)]
-    )
-
-    # TODO: Add The logo
 
 
 class QuestionTheme(Model):

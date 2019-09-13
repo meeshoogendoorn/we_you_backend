@@ -2,18 +2,21 @@
 
 __all__ = (
     "User",
+    "Group",
 )
 
 from django.db.models.fields import BooleanField, EmailField
+from django.db.models.fields.related import ManyToManyField
+
 from django.utils.translation import gettext_lazy as _
 
-from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.models import Group
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from accounts.managers import UserManager
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser):
     """Overridden django user model."""
 
     EMAIL_FIELD = "email"
@@ -21,6 +24,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ()
 
     email = EmailField(_("email address"), unique=True)
+
+    groups = ManyToManyField(
+        Group,
+        blank=True,
+        verbose_name=_('groups'),
+        related_name="users",
+        related_query_name="user",
+    )
 
     objects = UserManager()
     deleted = BooleanField(default=False)

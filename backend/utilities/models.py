@@ -1,3 +1,9 @@
-from django.db import models
+from django.db.models import Model
+from django.db.models.fields import BinaryField, CharField
 
-# Create your models here.
+
+class Image(Model):
+    mime = CharField(max_length=4)
+    path = CharField(max_length=255)
+    data = BinaryField()
+
