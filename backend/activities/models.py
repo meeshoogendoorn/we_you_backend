@@ -8,17 +8,13 @@ __all__ = (
 )
 
 from django.db.models import Model
+from django.db.models.fields import TextField
+from django.db.models.fields import CharField
 from django.db.models.fields import BooleanField
-from django.db.models.fields import TextField, CharField
+from django.db.models.fields import DateTimeField
 from django.db.models.fields import PositiveSmallIntegerField
-
 from django.db.models.fields.related import CASCADE, ForeignKey
 
-from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
-from django.core.validators import MaxValueValidator
-
-from accounts.utils import is_employee
 from accounts.models import User
 from companies.models import Company
 
@@ -32,9 +28,8 @@ class QuestionTheme(Model):
     theme is interesting it can be extended throughout
     multiple question sets.
     """
+    label = CharField()
     company = ForeignKey(Company, CASCADE)
-
-    # TODO: add timestamps of start and end?
 
 
 class QuestionSet(Model):
@@ -45,44 +40,79 @@ class QuestionSet(Model):
     be questioned, and the result will only be used when all
     questions are answered.
     """
-    theme = ForeignKey(QuestionTheme, CASCADE)
+    theme = ForeignKey(QuestionTheme, CASCADE, related_name="sets")
     description = TextField()
-    # TODO: add forward to employer or admin
+
+    start = DateTimeField()
+    until = DateTimeField()
+
+
+class Collection(Model):
+    """
+    A collection of possible answers for a question.
+
+    This model is mainly just a parent for the actual
+    answers.
+    """
+    label = CharField(max_length=255, unique=True)
+
+
+class Answer(Model):
+    """
+    A option of a answer collection.
+
+    This model defines the actual value and label
+    of a question.
+    """
+
+    class Meta:
+        ordering = ("value",)
+        unique_together = (("coll", "value"), ("coll", "label"))
+
+    coll = ForeignKey(Collection, CASCADE)
+    label = CharField()
+    value = PositiveSmallIntegerField()
 
 
 class Question(Model):
-    """A single question to be answered."""
+    """
+    A single question to be answered.
+
+    When the 'evaluate_employer' flag is set then there
+    will be a notification that the employee wishes to
+    evaluate with the employer.
+
+    When the 'evaluate_administrator' flag is set then
+    the user wishes to evaluate further with a employee
+    of 'home4talent'.
+    """
 
     class Meta:
         ordering = ("id",)
 
     set = ForeignKey(QuestionSet, CASCADE)
-    question = CharField(max_length=255)
+    question = CharField(max_length=255, unique=True)
+
     is_serious = BooleanField(default=True)
+    collection = ForeignKey(Collection, CASCADE)
+
+    # TODO: discus with the client about evaluation specifics.
+    evaluate_employer = BooleanField(default=False)
+    evaluate_administrator = BooleanField(default=False)
 
 
-class Answer(Model):
-    """The answer of a question linked to a user."""
+class Answered(Model):
+    """
+    The actual given answer of to a question of a user.
+
+    This model defines the actual value of a user to a
+    question by creating a reference to the value.
+    """
 
     class Meta:
         unique_together = ("answerer", "question")
         order_with_respect_to = "question"
 
-    rating = PositiveSmallIntegerField(validators=[
-        MaxValueValidator(5), MinValueValidator(1)
-    ])
-
     answerer = ForeignKey(User, CASCADE)
+    answered = ForeignKey(Answer, CASCADE)
     question = ForeignKey(Question, CASCADE)
-
-    # XXX MAYBE: remove and let it be handled by permission?
-    def clean(self):
-        """
-        Make sure that the answerer is a employee.
-
-        :raises ValidationError: When the user is not a employee
-        """
-        if is_employee(self.answerer):
-            return
-
-        raise ValidationError("A answer can only be answered by a employee")
