@@ -118,7 +118,7 @@ class Answered(Model):
     """
 
     class Meta:
-        unique_together = ("answerer", "question")
+        unique_together = ("answerer", "question", "property")
         order_with_respect_to = "question"
 
     answerer = ForeignKey(User, CASCADE, "given_answers")
