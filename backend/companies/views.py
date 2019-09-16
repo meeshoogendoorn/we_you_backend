@@ -11,8 +11,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 
 from accounts.utils import is_administrator
-from accounts.permissions import IsEmployer, IsAdmin
-from accounts.permissions import IsEmployeeAndReadOnly
+from accounts.permissions import IsManagementAndReadOnly
+from accounts.permissions import IsEmployeeAndReadOnly, IsEmployer
 
 from companies.models import ColourTheme, Company
 from companies.serializers import ColourThemeSerializer, CompanySerializer
@@ -34,7 +34,7 @@ class ColourThemeViewSet(ModelViewSet):
     serializer_class = ColourThemeSerializer
 
     permission_classes = (
-        IsAuthenticated, IsEmployer | IsEmployeeAndReadOnly | IsAdmin
+        IsEmployer | IsEmployeeAndReadOnly | IsManagementAndReadOnly
     )
 
     def get_serializer(self, *args, **kwargs):
