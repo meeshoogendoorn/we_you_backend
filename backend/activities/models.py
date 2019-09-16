@@ -5,10 +5,12 @@ __all__ = (
     "Answers",
     "Answered",
 
+    "Session",
     "Question",
+    "Reflection",
     "QuestionSet",
     "QuestionTheme",
-    "QuestionRound",
+
 )
 
 from django.db.models import Model
@@ -47,7 +49,7 @@ class QuestionSet(Model):
     theme = ManyToManyField(QuestionTheme, "sets")
 
 
-class QuestionRound(Model):
+class Session(Model):
     """
     A single session of questions for a theme.
     """
@@ -102,7 +104,7 @@ class Question(Model):
         ordering = ("id",)
 
     set = ForeignKey(QuestionSet, CASCADE, "questions")
-    answers = ForeignKey(Answers, CASCADE)
+    answers = ForeignKey(Answers, CASCADE, "questions")
     question = CharField(max_length=255, unique=True)
 
 
@@ -114,17 +116,17 @@ class Answered(Model):
     question by creating a reference to the value.
 
     A certain record of this model is considered property
-    of a certain question round.
+    of a certain question session.
     """
 
     class Meta:
         unique_together = ("answerer", "question", "property")
         order_with_respect_to = "question"
 
-    answerer = ForeignKey(User, CASCADE, "given_answers")
-    answered = ForeignKey(Answer, CASCADE, "given_answers")
-    question = ForeignKey(Question, CASCADE, "given_answers")
-    property = ForeignKey(QuestionRound, CASCADE, "given_answers")
+    answerer = ForeignKey(User, CASCADE, "answered_questions")
+    answered = ForeignKey(Answer, CASCADE, "answered_questions")
+    question = ForeignKey(Question, CASCADE, "answered_questions")
+    property = ForeignKey(Session, CASCADE, "answered_questions")
 
 
 class Reflection(Model):
@@ -133,6 +135,6 @@ class Reflection(Model):
     class Meta:
         unique_together = ("answerer", "session")
 
-    session = ForeignKey(QuestionRound, CASCADE, "reflections")
+    session = ForeignKey(Session, CASCADE, "reflections")
     answerer = ForeignKey(User, CASCADE, "reflections")
     description = TextField()
