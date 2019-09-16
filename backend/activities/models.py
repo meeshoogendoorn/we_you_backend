@@ -2,17 +2,21 @@
 
 __all__ = (
     "Answer",
+    "Answers",
+    "Answered",
+
     "Question",
     "QuestionSet",
     "QuestionTheme",
+    "QuestionRound",
 )
 
 from django.db.models import Model
 from django.db.models.fields import TextField
 from django.db.models.fields import CharField
-from django.db.models.fields import BooleanField
 from django.db.models.fields import DateTimeField
 from django.db.models.fields import PositiveSmallIntegerField
+from django.db.models.fields.related import ManyToManyField
 from django.db.models.fields.related import CASCADE, ForeignKey
 
 from accounts.models import User
@@ -29,7 +33,7 @@ class QuestionTheme(Model):
     multiple question sets.
     """
     label = CharField()
-    company = ForeignKey(Company, CASCADE)
+    company = ManyToManyField(Company)
 
 
 class QuestionSet(Model):
@@ -40,14 +44,20 @@ class QuestionSet(Model):
     be questioned, and the result will only be used when all
     questions are answered.
     """
-    theme = ForeignKey(QuestionTheme, CASCADE, related_name="sets")
-    description = TextField()
+    theme = ManyToManyField(QuestionTheme, "sets")
+
+
+class QuestionRound(Model):
+    """
+    A single session of questions for a theme.
+    """
+    set = ForeignKey(QuestionSet, CASCADE, "sessions")
 
     start = DateTimeField()
     until = DateTimeField()
 
 
-class Collection(Model):
+class Answers(Model):
     """
     A collection of possible answers for a question.
 
@@ -69,9 +79,10 @@ class Answer(Model):
         ordering = ("value",)
         unique_together = (("coll", "value"), ("coll", "label"))
 
-    coll = ForeignKey(Collection, CASCADE)
     label = CharField()
     value = PositiveSmallIntegerField()
+
+    answers = ForeignKey(Answers, CASCADE, "answers")
 
 
 class Question(Model):
@@ -90,15 +101,9 @@ class Question(Model):
     class Meta:
         ordering = ("id",)
 
-    set = ForeignKey(QuestionSet, CASCADE)
+    set = ForeignKey(QuestionSet, CASCADE, "questions")
+    answers = ForeignKey(Answers, CASCADE)
     question = CharField(max_length=255, unique=True)
-
-    is_serious = BooleanField(default=True)
-    collection = ForeignKey(Collection, CASCADE)
-
-    # TODO: discus with the client about evaluation specifics.
-    evaluate_employer = BooleanField(default=False)
-    evaluate_administrator = BooleanField(default=False)
 
 
 class Answered(Model):
@@ -107,12 +112,22 @@ class Answered(Model):
 
     This model defines the actual value of a user to a
     question by creating a reference to the value.
+
+    A certain record of this model is considered property
+    of a certain question round.
     """
 
     class Meta:
         unique_together = ("answerer", "question")
         order_with_respect_to = "question"
 
-    answerer = ForeignKey(User, CASCADE)
-    answered = ForeignKey(Answer, CASCADE)
-    question = ForeignKey(Question, CASCADE)
+    answerer = ForeignKey(User, CASCADE, "given_answers")
+    answered = ForeignKey(Answer, CASCADE, "given_answers")
+    question = ForeignKey(Question, CASCADE, "given_answers")
+    property = ForeignKey(QuestionRound, CASCADE, "given_answers")
+
+
+class Reflection(Model):
+
+    reflector = ForeignKey(User, CASCADE, "reflections")
+    description = TextField()
