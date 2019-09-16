@@ -128,6 +128,11 @@ class Answered(Model):
 
 
 class Reflection(Model):
+    """A additional reflection from a employee to QuestionGroup."""
 
-    reflector = ForeignKey(User, CASCADE, "reflections")
+    class Meta:
+        unique_together = ("answerer", "session")
+
+    session = ForeignKey(QuestionRound, CASCADE, "reflections")
+    answerer = ForeignKey(User, CASCADE, "reflections")
     description = TextField()
