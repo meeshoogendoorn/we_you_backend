@@ -35,7 +35,6 @@ class QuestionTheme(Model):
     multiple question sets.
     """
     label = CharField()
-    company = ManyToManyField(Company)
 
 
 class QuestionSet(Model):
@@ -57,6 +56,8 @@ class Session(Model):
 
     start = DateTimeField()
     until = DateTimeField()
+
+    company = ManyToManyField(Company)
 
 
 class Answers(Model):
