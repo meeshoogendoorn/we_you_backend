@@ -9,6 +9,7 @@ __all__ = (
 )
 
 import enum
+import functools
 
 from django.db.models.query import Q
 
@@ -27,6 +28,7 @@ class Groups(enum.IntEnum):
     employee = 4
 
 
+@functools.lru_cache()
 def is_administrator(user):
     """
     Check whether the user is a admin or not.
@@ -40,6 +42,7 @@ def is_administrator(user):
     return user.groups.filter(id=Groups.admin).exists()
 
 
+@functools.lru_cache()
 def is_management(user, allow_admin=True):
     """
     Check whether the user is a manager or not.
@@ -61,6 +64,7 @@ def is_management(user, allow_admin=True):
     return user.groups.filter(query).exists()
 
 
+@functools.lru_cache()
 def is_employer(user, allow_admin=True):
     """
     Check whether the user is a employer or not.
@@ -82,6 +86,7 @@ def is_employer(user, allow_admin=True):
     return user.groups.filter(query).exists()
 
 
+@functools.lru_cache()
 def is_employee(user, allow_admin=True):
     """
     Check whether the user is a employee or not.
