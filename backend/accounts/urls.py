@@ -16,19 +16,19 @@ from accounts.views import RegisterEmployeesViewSet
 router = SimpleRouter()
 
 router.register(
-    "account/",
+    "account",
     AccountViewSet,
     "account"
 )
 
 router.register(
-    "register-employer/",
+    "register-employer",
     RegisterEmployerViewSet,
     "register-employer"
 )
 
 router.register(
-    "register-employees/",
+    "register-employees",
     RegisterEmployeesViewSet,
     "register-employees"
 )
