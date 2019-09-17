@@ -1,6 +1,7 @@
 """Account specific serializers."""
 
 __all__ = (
+    "AccountSerializer",
     "RegisterEmployerSerializer",
     "RegisterEmployeesSerializer",
 )
@@ -8,12 +9,20 @@ __all__ = (
 from django.conf import settings
 from django.core.mail import send_mass_mail
 
-from rest_framework.serializers import ListSerializer
-from rest_framework.serializers import Serializer, EmailField
 from rest_framework.serializers import PrimaryKeyRelatedField
+from rest_framework.serializers import ListSerializer, Serializer
+from rest_framework.serializers import ModelSerializer, EmailField
 
 from accounts.models import Group, User
 from companies.models import Company, Member
+
+
+class AccountSerializer(ModelSerializer):
+    """Simple serializer for user model."""
+
+    class Meta:
+        model = User
+        fields = ("id", "email")
 
 
 class RegisterEmployerSerializer(Serializer):

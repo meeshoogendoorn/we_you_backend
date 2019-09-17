@@ -8,11 +8,18 @@ from django.urls import path
 
 from rest_framework.routers import SimpleRouter
 
+from accounts.views import AccountViewSet
 from accounts.views import LogoutView, LoginView
 from accounts.views import RegisterEmployerViewSet
 from accounts.views import RegisterEmployeesViewSet
 
 router = SimpleRouter()
+
+router.register(
+    "account/",
+    AccountViewSet,
+    "account"
+)
 
 router.register(
     "register-employer/",

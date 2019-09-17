@@ -38,8 +38,16 @@ class User(AbstractBaseUser):
 
     @property
     def is_active(self):
+        """
+        Check if the user is deleted or not.
+
+        :return: Whether or not this user is deleted.
+        :rtype: bool
+        """
         return not self.deleted
 
     def clean(self):
-        """Overridden because there is no real username."""
+        """
+        Overridden because there is no real username.
+        """
         self.email = self.__class__.objects.normalize_email(self.email)
