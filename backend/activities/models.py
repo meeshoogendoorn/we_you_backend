@@ -34,7 +34,7 @@ class QuestionTheme(Model):
     theme is interesting it can be extended throughout
     multiple question sets.
     """
-    label = CharField()
+    label = CharField(max_length=255)
 
 
 class QuestionSet(Model):
@@ -45,6 +45,7 @@ class QuestionSet(Model):
     be questioned, and the result will only be used when all
     questions are answered.
     """
+    label = CharField(max_length=255)
     theme = ManyToManyField(QuestionTheme, "sets")
 
 
@@ -52,12 +53,16 @@ class Session(Model):
     """
     A single session of questions for a theme.
     """
+    class Meta:
+        unique_together = ("company", "theme")
+
     set = ForeignKey(QuestionSet, CASCADE, "sessions")
+    theme = ForeignKey(QuestionTheme, CASCADE, "sessions")
 
     start = DateTimeField()
     until = DateTimeField()
 
-    company = ManyToManyField(Company)
+    company = ForeignKey(Company, "sessions")
 
 
 class Answers(Model):
@@ -80,12 +85,12 @@ class Answer(Model):
 
     class Meta:
         ordering = ("value",)
-        unique_together = (("coll", "value"), ("coll", "label"))
+        unique_together = (("answers", "value"), ("answers", "label"))
 
-    label = CharField()
+    label = CharField(max_length=255)
     value = PositiveSmallIntegerField()
 
-    answers = ForeignKey(Answers, CASCADE, "answers")
+    answers = ForeignKey(Answers, CASCADE, "values")
 
 
 class Question(Model):
@@ -134,8 +139,9 @@ class Reflection(Model):
     """A additional reflection from a employee to QuestionGroup."""
 
     class Meta:
-        unique_together = ("answerer", "session")
+        unique_together = ("answerer", "question", "session")
 
     session = ForeignKey(Session, CASCADE, "reflections")
     answerer = ForeignKey(User, CASCADE, "reflections")
+    question = ForeignKey(Question, CASCADE, "reflections")
     description = TextField()

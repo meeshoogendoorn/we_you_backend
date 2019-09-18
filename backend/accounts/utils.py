@@ -25,6 +25,7 @@ class Groups(enum.IntEnum):
     employee = 4
 
 
+@functools.lru_cache()
 def is_administrator(user):
     """
     Check whether the user is a admin or not.
