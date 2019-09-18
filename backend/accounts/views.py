@@ -65,11 +65,11 @@ class AccountViewSet(ReadOnlyModelViewSet):
             query &= Q(id=self.request.user.id)
 
         if is_employer(self.request.user, False):
-            query &= Q(groups=Groups.employee)
+            query &= Q(group=Groups.employee)
             query &= Q(member__company=self.request.user.member.company)
 
         if is_management(self.request.user, False):
-            query &= ~Q(groups=Groups.admin)
+            query &= ~Q(group=Groups.admin)
 
         return queryset.filter(query)
 

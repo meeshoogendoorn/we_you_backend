@@ -2,19 +2,16 @@
 
 __all__ = (
     "GroupValidator",
-    "BaseUserValidation",
+    "BaseGroupValidation",
 )
 
 from accounts.utils import Groups
+from accounts.models import User
 
-from rest_framework.validators import qs_exists
 from rest_framework.exceptions import ValidationError
 
-from django.contrib.auth.models import Group
-from django.contrib.auth.base_user import AbstractBaseUser
 
-
-class BaseUserValidation(object):
+class BaseGroupValidation(object):
     """
     Base implementation of a validator that validates the group of a user.
     """
@@ -31,25 +28,29 @@ class BaseUserValidation(object):
         :return: The validated user instance
         :rtype: accounts.models.User
         """
-        if not isinstance(instance, AbstractBaseUser):
-            raise ValidationError("The value is not a user or user id")
+        if not isinstance(instance, User):
+            raise ValidationError("The value is not a user instance")
 
-        if qs_exists(self.set_filter(instance.groups.all())):
+        if self.has_group(instance):
             return instance
 
         raise ValidationError(
             "The current user can't be assigned to this serializer"
         )
 
-    def set_filter(self, queryset):
+    def has_group(self, instance):
         """
-        Inject the appropriate filter into the queryset
+        Validate that the user has the appropriate group.
 
-        :param queryset: The queryset to filter
-        :type queryset: django.db.models.query.QuerySet
+        Please note that this class is for data integrity, so
+        even when a user is a administrator we will not allow
+        it.
 
-        :return: The filtered queryset
-        :rtype: django.db.models.query.QuerySet
+        :param instance: The user instance to check
+        :type instance: accounts.models.User
+
+        :return: Whether the user is in the correct group or not
+        :rtype: bool
         """
         raise NotImplementedError("This method must be overridden")
 
@@ -63,7 +64,7 @@ class BaseUserValidation(object):
         setattr(self, "context", serializer.context)
 
 
-class GroupValidator(BaseUserValidation):
+class GroupValidator(BaseGroupValidation):
     """
     Serializer field validator that validates that the user is a employee.
     """
@@ -75,6 +76,12 @@ class GroupValidator(BaseUserValidation):
         :param ident: The identifier of the group
         :type ident: int
         """
+        assert not (isinstance(ident, int) and ident in Groups.__iter__()), (
+            "The identifier of the group must be of type 'int'"
+            " and defined in 'accounts.utils.Groups' to assure"
+            " that it even exists"
+        )
+
         self.ident = ident
 
     def __repr__(self):
@@ -85,18 +92,22 @@ class GroupValidator(BaseUserValidation):
         :rtype: str
         """
         klass = self.__class__.__name__
-        group = self.set_filter(Group.objects.all()).values("id").get()
+        group = Groups(self.ident).name
 
-        return f"{klass}(Groups.{Groups(group['id']).name})"
+        return f"{klass}(Groups.{group})"
 
-    def set_filter(self, queryset):
+    def has_group(self, instance):
         """
-        Inject the appropriate filter into the queryset
+        Validate that the user has the appropriate group.
 
-        :param queryset: The queryset to filter
-        :type queryset: django.db.models.query.QuerySet
+        Please note that this class is for data integrity, so
+        even when a user is a administrator we will not allow
+        it.
 
-        :return: The filtered queryset
-        :rtype: django.db.models.query.QuerySet
+        :param instance: The user instance to check
+        :type instance: accounts.models.User
+
+        :return: Whether the user is in the correct group or not
+        :rtype: bool
         """
-        return queryset.filter(id=self.ident)
+        return instance.group_id == self.ident

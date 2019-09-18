@@ -5,11 +5,12 @@ __all__ = (
     "AuthFactory",
 )
 
-from factory import DjangoModelFactory, Faker
+from factory import Iterator, Faker
+from factory import DjangoModelFactory
 
 from knox.models import AuthToken
 
-from accounts.models import User
+from accounts.models import Group, User
 
 
 class UserFactory(DjangoModelFactory):
@@ -24,6 +25,8 @@ class UserFactory(DjangoModelFactory):
         model = User
 
     email = Faker("email")
+    group = Iterator(Group.objects.all())
+
     password = "password"
 
     @classmethod

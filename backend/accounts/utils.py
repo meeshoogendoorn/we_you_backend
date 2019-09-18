@@ -9,9 +9,6 @@ __all__ = (
 )
 
 import enum
-import functools
-
-from django.db.models.query import Q
 
 
 class Groups(enum.IntEnum):
@@ -28,7 +25,6 @@ class Groups(enum.IntEnum):
     employee = 4
 
 
-@functools.lru_cache()
 def is_administrator(user):
     """
     Check whether the user is a admin or not.
@@ -39,10 +35,9 @@ def is_administrator(user):
     :return: whether the user is a admin or not.
     :rtype: bool
     """
-    return user.groups.filter(id=Groups.admin).exists()
+    return user.group_id == Groups.admin
 
 
-@functools.lru_cache()
 def is_management(user, allow_admin=True):
     """
     Check whether the user is a manager or not.
@@ -56,15 +51,12 @@ def is_management(user, allow_admin=True):
     :return: whether the user is a admin or not.
     :rtype: bool
     """
-    query = (
-        Q(id=Groups.management) | Q(id=Groups.admin)
-        if allow_admin else
-        Q(id=Groups.management)
+    return (
+        user.group_id == Groups.management
+        or (allow_admin and user.group_id == Groups.admin)
     )
-    return user.groups.filter(query).exists()
 
 
-@functools.lru_cache()
 def is_employer(user, allow_admin=True):
     """
     Check whether the user is a employer or not.
@@ -78,15 +70,12 @@ def is_employer(user, allow_admin=True):
     :return: whether the user is a employer or not.
     :rtype: bool
     """
-    query = (
-        Q(id=Groups.employer) | Q(id=Groups.admin)
-        if allow_admin else
-        Q(id=Groups.employer)
+    return (
+        user.group_id == Groups.employer
+        or (allow_admin and user.group_id == Groups.admin)
     )
-    return user.groups.filter(query).exists()
 
 
-@functools.lru_cache()
 def is_employee(user, allow_admin=True):
     """
     Check whether the user is a employee or not.
@@ -100,9 +89,7 @@ def is_employee(user, allow_admin=True):
     :return: whether the user is a employee or not.
     :rtype: bool
     """
-    query = (
-        Q(id=Groups.employee) | Q(id=Groups.admin)
-        if allow_admin else
-        Q(id=Groups.employee)
+    return (
+        user.group_id == Groups.employee
+        or (allow_admin and user.group_id == Groups.admin)
     )
-    return user.groups.filter(query).exists()

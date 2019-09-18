@@ -36,7 +36,7 @@ class IsAcceptable(IsAuthenticated):
         """
         return (
             IsAuthenticated.has_permission(self, request, view)
-            and request.user.groups.filter(id__in=Groups)
+            and request.user.group_id in Groups.__iter__()
         )
 
 
