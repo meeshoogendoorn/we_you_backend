@@ -1,13 +1,28 @@
 """Utilities for accounts."""
 
 __all__ = (
+    "Groups",
     "is_employer",
     "is_employee",
     "is_management",
     "is_administrator",
 )
 
-from django.db.models.query import Q
+import enum
+
+
+class Groups(enum.IntEnum):
+    """
+    Enumerator to give groups a clearer name.
+
+    Please note that this must be equal to the
+    groups.json fixture.
+    """
+
+    admin = 1
+    management = 2
+    employer = 3
+    employee = 4
 
 
 def is_administrator(user):
@@ -20,7 +35,7 @@ def is_administrator(user):
     :return: whether the user is a admin or not.
     :rtype: bool
     """
-    return user.groups.filter(id=1).exists()
+    return user.group_id == Groups.admin
 
 
 def is_management(user, allow_admin=True):
@@ -36,8 +51,10 @@ def is_management(user, allow_admin=True):
     :return: whether the user is a admin or not.
     :rtype: bool
     """
-    query = Q(id=2) | Q(id=1) if allow_admin else Q(id=2)
-    return user.groups.filter(query).exists()
+    return (
+        user.group_id == Groups.management
+        or (allow_admin and user.group_id == Groups.admin)
+    )
 
 
 def is_employer(user, allow_admin=True):
@@ -53,8 +70,10 @@ def is_employer(user, allow_admin=True):
     :return: whether the user is a employer or not.
     :rtype: bool
     """
-    query = Q(id=3) | Q(id=1) if allow_admin else Q(id=3)
-    return user.groups.filter(query).exists()
+    return (
+        user.group_id == Groups.employer
+        or (allow_admin and user.group_id == Groups.admin)
+    )
 
 
 def is_employee(user, allow_admin=True):
@@ -70,5 +89,7 @@ def is_employee(user, allow_admin=True):
     :return: whether the user is a employee or not.
     :rtype: bool
     """
-    query = Q(id=4) | Q(id=1) if allow_admin else Q(id=4)
-    return user.groups.filter(query).exists()
+    return (
+        user.group_id == Groups.employee
+        or (allow_admin and user.group_id == Groups.admin)
+    )

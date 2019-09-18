@@ -1,7 +1,43 @@
+"""Basic permission for accounts and groups."""
+
+__all__ = (
+    "IsEmployer",
+    "IsEmployee",
+
+    "IsAcceptable",
+    "IsManagement",
+
+    "IsEmployerAndReadOnly",
+    "IsManagementAndReadOnly",
+)
+
 from rest_framework.permissions import IsAuthenticated
 
+from accounts.utils import Groups
 from accounts.utils import is_management, is_employer
 from accounts.utils import is_administrator, is_employee
+
+
+class IsAcceptable(IsAuthenticated):
+    """Permission for any acceptable group."""
+
+    def has_permission(self, request, view):
+        """
+        Check if the current user has any of the predefined groups.
+
+        :param request: The current request instance
+        :type request: rest_framework.request.Request
+
+        :param view: The current view instance
+        :type view: rest_framework.views.APIView
+
+        :return: Whether the permission was granted or not
+        :rtype: bool
+        """
+        return (
+            IsAuthenticated.has_permission(self, request, view)
+            and request.user.group_id in Groups.__iter__()
+        )
 
 
 class IsManagement(IsAuthenticated):

@@ -6,7 +6,7 @@ __all__ = (
 )
 
 from django.db.models.fields import BooleanField, EmailField
-from django.db.models.fields.related import ManyToManyField
+from django.db.models.fields.related import CASCADE, ForeignKey
 
 from django.utils.translation import gettext_lazy as _
 
@@ -24,22 +24,23 @@ class User(AbstractBaseUser):
     REQUIRED_FIELDS = ()
 
     email = EmailField(_("email address"), unique=True)
-
-    groups = ManyToManyField(
-        Group,
-        blank=True,
-        verbose_name=_('groups'),
-        related_name="users",
-        related_query_name="user",
-    )
+    group = ForeignKey(Group, CASCADE, related_name="users")
 
     objects = UserManager()
     deleted = BooleanField(default=False)
 
     @property
     def is_active(self):
+        """
+        Check if the user is deleted or not.
+
+        :return: Whether or not this user is deleted.
+        :rtype: bool
+        """
         return not self.deleted
 
     def clean(self):
-        """Overridden because there is no real username."""
+        """
+        Overridden because there is no real username.
+        """
         self.email = self.__class__.objects.normalize_email(self.email)
