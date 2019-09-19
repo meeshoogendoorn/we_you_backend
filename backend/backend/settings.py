@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "companies",
     "utilities",
     "activities",
+    "communications",
 ]
 
 MIDDLEWARE = [
