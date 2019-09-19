@@ -1,0 +1,50 @@
+[
+  {
+    "model": "communications.Variable",
+    "fields": {
+      "name": "Email",
+      "attr": "email"
+    }
+  },
+  {
+    "model": "communications.Variable",
+    "fields": {
+      "name": "Wachtwoord",
+      "attr": "password"
+    }
+  },
+  {
+    "model": "communications.Variable",
+    "fields": {
+      "name": "Bedrijfsnaam",
+      "attr": "company"
+    }
+  },
+
+  {
+    "model": "communications.Environment",
+    "pk": 1,
+    "fields": {
+      "label": "Nieuw werknemer account",
+      "variables": [1, 2, 3]
+    }
+  },
+  {
+    "model": "communications.Environment",
+    "pk": 2,
+    "fields": {
+      "label": "Niew werkgever account",
+      "variables": [1, 2, 3]
+    }
+  },
+
+  {
+    "model": "communications.Email",
+    "pk": 1,
+    "fields": {
+      "subject": "Nieuw account aangemaakt",
+      "content": "Een nieuwe gebruiker is aangemaakt:\nemail: {Email}\nwachtwoord: {Wachtwoord}",
+      "environ": 1
+    }
+  }
+]

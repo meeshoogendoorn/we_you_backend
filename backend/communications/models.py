@@ -18,6 +18,7 @@ from django.db.models.fields.related import ManyToManyField
 from companies.models import Company
 
 from communications.engine import EnvironmentEngine
+from communications.managers import EmailManager
 
 
 class Variable(Model):
@@ -62,8 +63,10 @@ class Email(Model):
 
     content = TextField()
     subject = CharField(unique=True, max_length=78)
-    environ = ForeignKey(Environment, PROTECT)
     company = ForeignKey(Company, CASCADE, null=True)
+    environ = ForeignKey(Environment, PROTECT)
+
+    objects = EmailManager()
 
     def process_content(self, context):
         """
