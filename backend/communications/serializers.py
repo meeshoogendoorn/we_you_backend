@@ -13,6 +13,7 @@ from companies.models import Company
 from utilities.fields import HyperlinkedRelatedReadField
 
 from communications.models import Email
+from communications.validators import DefaultEmailRestrictions
 
 
 class VariableSerializer(Serializer):
@@ -98,7 +99,9 @@ class EmailSerializer(ModelSerializer):
         queryset=Email.objects.all(),
         view_name="",
     )
+
     company = HyperlinkedRelatedReadField(
         queryset=Company.objects.all(),
         view_name="",
+        validators=[DefaultEmailRestrictions()]
     )

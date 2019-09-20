@@ -7,15 +7,16 @@ __all__ = (
 )
 
 from django.conf import settings
-from django.core.mail import send_mass_mail, send_mail
+from django.core.mail import send_mail
 
 from rest_framework.serializers import PrimaryKeyRelatedField
 from rest_framework.serializers import ListSerializer, Serializer
 from rest_framework.serializers import ModelSerializer, EmailField
 
-from accounts.models import Group, User
-from companies.models import Company, Member
+from accounts.models import User
+from companies.models import Company
 
+from communications.utils import MultiMailTransport
 from communications.models import Environment, Email
 
 
@@ -50,44 +51,29 @@ class RegisterEmployerSerializer(Serializer):
         address = self.validated_data["address"]
 
         environ = Environment.objects.get(id=2)
-        content = Email.objects.select_email(environ, company)
+        handler = Email.objects.select_email(environ, company)
 
         password = User.objects.make_random_password(12)
         instance = User.objects.create_user(address, password)
 
-        self.make_employer(company, instance)
+        instance.group = 3
+        instance.member.create(company=company)
 
         context = {
-            "email": instance.email,
+            "email": address,
             "company": company.name,
             "password": password,
         }
 
-        subject = content.subject
-        content = content.process_content(context)
+        subject = handler.subject
+        content = handler.process_content(context)
 
         send_mail(
-            subject,
-            content,
-            settings.DEFAULT_FROM_EMAIL,
-            (instance.email,)
+            subject, content,
+            settings.DEFAULT_FROM_EMAIL, [address]
         )
 
         return instance
-
-    @staticmethod
-    def make_employer(company, account):
-        """
-        Register the created user as a employer within his company.
-
-        :param company: The company to register the user to
-        :type company: companies.models.Company
-
-        :param account: The user account to register
-        :type account: accounts.models.User
-        """
-        Group.objects.get(id=3).users.add(account)
-        Member.objects.create(company=company, account=account)
 
 
 class RegisterEmployeesSerializer(Serializer):
@@ -111,90 +97,32 @@ class RegisterEmployeesSerializer(Serializer):
         """
 
         company = self.validated_data["company"]
-        environ = Environment.objects.get(id=1)
-        content = Email.objects.select_email(environ, company)
-
         members = self.validated_data["members"]
-        factory = self.factory(company, content)
 
-        return send_mass_mail(tuple(map(factory, members)))
+        transport = MultiMailTransport({"company": company.name}, 1, company)
 
-    def factory(self, company, content):
-        """
-        Create a callback for user creation.
-
-        :param company: The company of the employee
-        :type company: companies.models.Company
-
-        :param content: The email model that contains the content
-        :type content: communications.models.Email
-
-        :return: The actual factory: a callback that creates the account
-        :rtype: callable
-        """
-        context = {"company": company.name}
-
-        def _factory(account):
-            instance, password = self.create_user(account)
-
-            self.employ_user(instance, company)
-
-            return self.inform_user(instance, password, content, context)
-
-        return _factory
+        seeder = (transport(*self.employ(a, company)) for a in members)
+        return transport.finish(seeder)
 
     @staticmethod
-    def inform_user(instance, password, content, context):
-        """
-        Prepare a single message to be send to a employee.
-
-        :param instance: The user model of the employee
-        :type instance: accounts.models.User
-
-        :param password: The generated password
-        :type password: str
-
-        :param content: The email to use as content
-
-        :param context: The context to process the content
-        :type context: dict
-
-        :return: A tuple with the content to send
-        :rtype: tuple
-        """
-        context = {**context, "email": instance.email, "password": password}
-
-        return (
-            content.subject, content.process_content(context),
-            settings.DEFAULT_FROM_EMAIL, (instance.email,)
-        )
-
-    @staticmethod
-    def create_user(account):
+    def employ(account, company):
         """
         Create and initialize a single employee.
 
-        :param company:
+        :param company: The company to employ the user for
+        :type company: companies.models.Company
 
-        :param account:
+        :param account: The email address to create the account for
+        :type account: str
 
-        :return:
+        :return: The parameters to the transport
+        :rtype: tuple
         """
         password = User.objects.make_random_password(12)
         instance = User.objects.create_user(email=account, password=password)
+        receiver = instance.email
 
-        return instance, password
+        instance.group = 3
+        instance.member.create(company=company)
 
-    @staticmethod
-    def employ_user(account, company):
-        """
-        Add the user to the employee's group
-
-        :param account: The user instance
-        :type account: accounts.models.User
-
-        :param company: The company of the employee
-        :type company: companies.models.Company
-        """
-        Group.objects.get(id=3).users.add(account)
-        Member.objects.create(company=company, account=account)
+        return receiver, {"email": receiver, "password": password}
