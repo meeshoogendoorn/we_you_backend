@@ -5,15 +5,12 @@ __all__ = (
 
 import datetime
 
-from django.conf import settings
-from django.core.mail import send_mass_mail
 from django.db.models.query import Q
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import ModelSerializer
-
 from rest_framework.serializers import CurrentUserDefault
-from knox.auth import TokenAuthentication
+
 from utilities.fields import HyperlinkedRelatedReadField
 
 from activities.models import Answer
@@ -25,15 +22,22 @@ from activities.models import Reflection
 from activities.models import QuestionSet
 from activities.models import QuestionTheme
 
+from activities.validators import SessionIsNowAlive
+from activities.validators import SessionHasCompany
+from activities.validators import QuestionHasCompany
+from activities.validators import QuestionIsAnswered
 
 from accounts.utils import Groups, is_employer
 from accounts.models import User
 from accounts.validators import GroupValidator
 
 from companies.models import Company
+from communications.utils import MultiMailTransport
 
 
 class SessionSerializer(ModelSerializer):
+    """Serializer for a single session."""
+
     class Meta:
         model = Session
         fields = ("id", "set", "theme", "start", "until", "company")
@@ -68,6 +72,8 @@ class SessionSerializer(ModelSerializer):
 
 
 class QuestionThemeSerializer(ModelSerializer):
+    """Serializer for the question theme."""
+
     class Meta:
         model = QuestionTheme
         fields = ("id", "label", "sets")
@@ -86,14 +92,19 @@ class QuestionThemeSerializer(ModelSerializer):
 
 
 class AnsweredSerializer(ModelSerializer):
+    """Serializer for a users 'answered': the answer to a question."""
+
     class Meta:
         model = Answered
         fields = ("id", "answerer", "answered", "question", "property")
 
     answerer = HyperlinkedRelatedReadField(
+        default=CurrentUserDefault(),
         queryset=User.objects.all(),
         view_name="",
-        validators=[GroupValidator(Groups.employee)]
+        validators=[
+            GroupValidator(Groups.employee),
+        ]
     )
 
     answered = HyperlinkedRelatedReadField(
@@ -109,7 +120,43 @@ class AnsweredSerializer(ModelSerializer):
     property = HyperlinkedRelatedReadField(
         queryset=Session.objects.all(),
         view_name="",
+        validators=[
+            SessionHasCompany(),
+            SessionIsNowAlive(),
+        ]
     )
+
+    def validate(self, attributes):
+        """
+        Validate the answer given and the additional context.
+
+        Validates that the answered answer can be applied to the
+        question, and that the question is actually found within
+        the session's question set.
+
+        :param attributes: The values to validate
+        :type attributes: dict
+
+        :return: The validated values
+        :rtype: dict
+        """
+        clause = Q(answers__answer=attributes["answered"])
+        clause = Q(id=attributes["question"]) & clause
+
+        if not Question.objects.filter(clause).exists():
+            raise ValidationError(
+                "The given answer is not available to this question"
+            )
+
+        clause = Q(set__session=attributes["property"])
+        clause = Q(id=attributes["question"]) & clause
+
+        if not Question.objects.filter(clause).exists():
+            raise ValidationError(
+                "The question doesn't belong to this session"
+            )
+
+        return attributes
 
     def get_field_names(self, declared_fields, info):
         """
@@ -142,7 +189,9 @@ class ReflectionSerializer(ModelSerializer):
     """
     Serializer for the reflection of a user.
 
-    To create a reflection is optional.
+    This serializer handles a few ver strict and thorough validations
+    because some of the fields are related through many-to-many fields
+    and they MUST match for the data to make sense.
     """
 
     class Meta:
@@ -152,68 +201,91 @@ class ReflectionSerializer(ModelSerializer):
     session = HyperlinkedRelatedReadField(
         queryset=Session.objects.all(),
         view_name="",
+        validators=[
+            SessionIsNowAlive(),
+            SessionHasCompany(),
+        ]
     )
 
     question = HyperlinkedRelatedReadField(
         queryset=Question.objects.all(),
         view_name="",
+        validators=[
+            QuestionIsAnswered(),
+            QuestionHasCompany(),
+        ]
     )
 
     answerer = HyperlinkedRelatedReadField(
         default=CurrentUserDefault(),
-        view_name="",
-        validators=[GroupValidator(Groups.employee)]
+        read_only=True,
+        view_name="account-detail",
+        validators=[
+            GroupValidator(Groups.employee),
+        ]
     )
 
     def save(self, **kwargs):
         """
         Overridden to inform management after storing the data.
 
-        :param kwargs:
+        :param kwargs: The additional data to save
+        :type kwargs: any
 
-        :return:
+        :return: The newly created reflection instance
+        :rtype: activities.models.Reflection
         """
-        instance = ModelSerializer.save(self, **kwargs)
-        answerer = instance.answerer
-
-        session = instance.session
-        company = answerer.member.company
-
         # XXX TODO: refactor to assigned management member of some sorts?
+        instance = ModelSerializer.save(self, **kwargs)
         managers = User.objects.filter(groups=Groups.management)
-        send_mass_mail(
-            (
-                f"Reflection of '{answerer.email}'",
-                f"The user '{answerer.email}' of the company"
-                f" {company.name}' wants to continue on the "
-                f"question set {session.set.label} from the "
-                f"theme {session.theme.label}."
-                f"\n"
-                f"\n"
-                f"The user gave the following description: "
-                f"\n"
-                f"\n"
-                f"{instance.description}",
-                settings.DEFAULT_FROM_EMAIL,
-                [manager.email]
-            )
-            for manager in managers
-        )
+
+        context = self.get_context(instance)
+        company = instance.answerer.member.company
+
+        transport = MultiMailTransport(context, 3, company)
+        transport.finish(transport(manager.email, {}) for manager in managers)
 
         return instance
 
-    def validate(self, attrs):
-        session = attrs["session"]
-        answerer = attrs["answerer"]
-        question = attrs["question"]
+    def validate(self, attributes):
+        """
+        Validate that the question has ties to the session.
 
-        if not question.set.filter(sessions=session).exist():
-            raise ValidationError # loose session
+        :param attributes: The values to validate
+        :type attributes: dict
 
-        if not question.answered_questions.filter(answerer=answerer).exists():
-            raise ValidationError # invalid question answerer combi
+        :return: The validated values to create a reflection
+        :rtype: dict
+        """
+        session = attributes["session"]
+        question = attributes["question"]
 
-        if not answerer.member.company.sessions.filter(session=session).exists():
-            raise ValidationError # company doesn't own session
+        clause = Q(set__session=session.id) & Q(id=question.id)
 
-        return attrs
+        if Question.objects.filter(clause).exist():
+            return attributes
+
+        raise ValidationError(
+            "The question doesn't have any ties to the session"
+        )
+
+    def get_context(self, instance):
+        """
+        Create the context to use for the email.
+
+        :param instance: The current reflection instance
+        :type instance: activities.models.Reflection
+
+        :return: The created context
+        :rtype: dict
+        """
+        return {
+            "q_id": instance.question.id,
+            "q_set": instance.session.set.label,
+            "q_theme": instance.session.theme.label,
+            "question": instance.question.question,
+
+            "email": instance.answerer.email,
+            "company": instance.answerer.member.company.name,
+            "description": instance.description,
+        }

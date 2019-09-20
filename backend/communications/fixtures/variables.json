@@ -1,6 +1,7 @@
 [
   {
     "model": "communications.Variable",
+    "pk": 1,
     "fields": {
       "name": "Email",
       "attr": "email"
@@ -8,6 +9,7 @@
   },
   {
     "model": "communications.Variable",
+    "pk": 2,
     "fields": {
       "name": "Wachtwoord",
       "attr": "password"
@@ -15,9 +17,50 @@
   },
   {
     "model": "communications.Variable",
+    "pk": 3,
     "fields": {
       "name": "Bedrijfsnaam",
       "attr": "company"
+    }
+  },
+  {
+    "model": "communications.Variable",
+    "pk": 4,
+    "fields": {
+      "name": "Vragen Thema",
+      "attr": "q_theme"
+    }
+  },
+  {
+    "model": "communications.Variable",
+    "pk": 5,
+    "fields": {
+      "name": "Vragen set",
+      "attr": "q_set"
+    }
+  },
+  {
+    "model": "communications.Variable",
+    "pk": 6,
+    "fields": {
+      "name": "Beschrijving",
+      "attr": "description"
+    }
+  },
+  {
+    "model": "communications.Variable",
+    "pk": 7,
+    "fields": {
+      "name": "Vraag Nummer",
+      "attr": "q_id"
+    }
+  },
+  {
+    "model": "communications.Variable",
+    "pk": 8,
+    "fields": {
+      "name": "Vraag",
+      "attr": "question"
     }
   },
 
@@ -37,6 +80,14 @@
       "variables": [1, 2, 3]
     }
   },
+  {
+    "model": "communications.Environment",
+    "pk": 3,
+    "fields": {
+      "label": "Aanvraag verder gaan op vraag",
+      "variables": [1, 3, 4, 5, 6, 7, 8]
+    }
+  },
 
   {
     "model": "communications.Email",
@@ -45,6 +96,24 @@
       "subject": "Nieuw account aangemaakt",
       "content": "Een nieuwe gebruiker is aangemaakt:\nemail: {Email}\nwachtwoord: {Wachtwoord}",
       "environ": 1
+    }
+  },
+  {
+    "model": "communications.Email",
+    "pk": 2,
+    "fields": {
+      "subject": "Nieuw wergevers account aangemaakt",
+      "content": "Een nieuwe gebruiker is aangemaakt:\nemail: {Email}\nwachtwoord: {Wachtwoord}",
+      "environ": 2
+    }
+  },
+  {
+    "model": "communications.Email",
+    "pk": 3,
+    "fields": {
+      "subject": "Aanvraag verder gaan op vraag",
+      "content": "De gebruiker {Email} van {Bedrijf} wil graag verder gaan op vraag {Vraag Nummer}: {Vraag}",
+      "environ": 3
     }
   }
 ]
