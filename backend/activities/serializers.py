@@ -5,13 +5,16 @@ __all__ = (
 
 import datetime
 
-from django.db.models.query import Q
+from django.db.models.query import F, Q
+from django.db.models.expressions import Subquery, Value
 
 from rest_framework.exceptions import ValidationError
+from rest_framework.serializers import IntegerField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import CurrentUserDefault
 
 from utilities.fields import HyperlinkedRelatedReadField
+from utilities.expressions import Count
 
 from activities.models import Answer
 from activities.models import Answers
@@ -28,11 +31,34 @@ from activities.validators import QuestionHasCompany
 from activities.validators import QuestionIsAnswered
 
 from accounts.utils import Groups, is_employer
+
 from accounts.models import User
 from accounts.validators import GroupValidator
 
 from companies.models import Company
 from communications.utils import MultiMailTransport
+
+
+class AnswerSerializer(ModelSerializer):
+    """Serializer for a single answer."""
+
+    class Meta:
+        model = Answers
+        fields = ("id", "label", "value", "answers")
+
+
+
+class AnswersSerializer(ModelSerializer):
+    """Serializer for a answer set."""
+
+    class Meta:
+        model = Answers
+        fields = ("id", "label", "values")
+
+    values = HyperlinkedRelatedReadField(
+        queryset=Answer.objects.all(),
+        view_name="",
+    )
 
 
 class SessionSerializer(ModelSerializer):
@@ -96,7 +122,26 @@ class AnsweredSerializer(ModelSerializer):
 
     class Meta:
         model = Answered
-        fields = ("id", "answerer", "answered", "question", "property")
+        fields = ("id", "value", "label", "answerer", "question", "property")
+
+    value = IntegerField(
+        max_value=100,
+        read_only=True,
+    )
+
+    answer = HyperlinkedRelatedReadField(
+        queryset=Answer.objects.all(),
+        view_name="",
+    )
+
+    session = HyperlinkedRelatedReadField(
+        queryset=Session.objects.all(),
+        view_name="",
+        validators=[
+            SessionHasCompany(),
+            SessionIsNowAlive(),
+        ]
+    )
 
     answerer = HyperlinkedRelatedReadField(
         default=CurrentUserDefault(),
@@ -107,24 +152,78 @@ class AnsweredSerializer(ModelSerializer):
         ]
     )
 
-    answered = HyperlinkedRelatedReadField(
-        queryset=Answer.objects.all(),
-        view_name="",
-    )
-
     question = HyperlinkedRelatedReadField(
         queryset=Question.objects.all(),
         view_name="",
     )
 
-    property = HyperlinkedRelatedReadField(
-        queryset=Session.objects.all(),
-        view_name="",
-        validators=[
-            SessionHasCompany(),
-            SessionIsNowAlive(),
-        ]
-    )
+    def save(self, **kwargs):
+        """
+        Overridden to add the copy-query to the value.
+
+        The value and actual answer are copied in case that the answer
+        set (Answers) is changed. This way we can maintain the actual
+        value and delete the answer, or change it, safely and maintain
+        data integrity.
+
+        :param kwargs: The additional data to add to validated_data
+        :type kwargs: any
+
+        :return: The newly created 'Answered' instance
+        :rtype: activities.models.Answered
+        """
+        if "value" not in kwargs:
+            answer = self.validated_data["answer"]
+            index = self.get_index(answer)
+            answers = self.get_answers(answer)
+
+            kwargs["value"] = self.get_calculation(answers) * index
+
+        return ModelSerializer.save(self, **kwargs)
+
+    def get_index(self, answer):
+        """
+        Get the index of the answer relative to his siblings.
+
+        TODO: test index retrieval
+        """
+        queryset = Answers.objects.filter(values=answer)[:1]
+        queryset = Answer.objects.filter(answers=queryset)
+
+        queryset = queryset.order_by("order")
+        queryset = queryset.filter(order__lte=answer.order)
+
+        queryset = queryset.annotate(__index=Count("*"))
+        queryset = queryset.values("__index")
+
+        return Subquery(queryset)
+
+    def get_answers(self, answer):
+        """
+        Get all 'sibling answers' from a answer though nested query.
+        """
+        queryset = Answers.objects.filter(values=answer)[:1]
+        queryset = Answer.objects.filter(answers=queryset)
+
+        return queryset
+
+    def set_annotation(self, queryset):
+        """
+        Set the annotation on the (to be) subquery.
+        """
+        queryset = queryset.order_by()
+        queryset = queryset.values("__count")
+        queryset = queryset.annotate(__count=Count("*"))
+
+        return queryset
+
+    def get_calculation(self, queryset):
+        """
+        Finalize the value by creating the calculation.
+        """
+        queryset = self.set_annotation(queryset)
+
+        return Value(100) / Subquery(queryset)
 
     def validate(self, attributes):
         """

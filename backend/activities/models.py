@@ -13,13 +13,20 @@ __all__ = (
 
 )
 
+import math
+
 from django.db.models import Model
 from django.db.models.fields import TextField
 from django.db.models.fields import CharField
 from django.db.models.fields import DateTimeField
 from django.db.models.fields import PositiveSmallIntegerField
-from django.db.models.fields.related import ManyToManyField
 from django.db.models.fields.related import CASCADE, ForeignKey
+from django.db.models.fields.related import SET_NULL, ManyToManyField
+
+from django.db.models.query import F, Q
+from django.db.models.functions import Ceil
+from django.db.models.aggregates import Count
+from django.db.models.expressions import Subquery
 
 from accounts.models import User
 from companies.models import Company
@@ -84,13 +91,14 @@ class Answer(Model):
     """
 
     class Meta:
-        ordering = ("value",)
-        unique_together = (("answers", "value"), ("answers", "label"))
+        ordering = ("order",)
+        unique_together = (("answers", "order"), ("answers", "label"))
 
     label = CharField(max_length=255)
-    value = PositiveSmallIntegerField()
+    order = PositiveSmallIntegerField()
 
     answers = ForeignKey(Answers, CASCADE, "values")
+    deleted = DateTimeField(null=True)
 
 
 class Question(Model):
@@ -126,13 +134,15 @@ class Answered(Model):
     """
 
     class Meta:
-        unique_together = ("answerer", "question", "property")
+        unique_together = ("answerer", "question", "session")
         order_with_respect_to = "question"
 
-    answerer = ForeignKey(User, CASCADE, "answered_questions")
-    answered = ForeignKey(Answer, CASCADE, "answered_questions")
-    question = ForeignKey(Question, CASCADE, "answered_questions")
-    property = ForeignKey(Session, CASCADE, "answered_questions")
+    value = PositiveSmallIntegerField()
+    answer = ForeignKey(Answer, SET_NULL, "answered_questions", null=True)
+    session = ForeignKey(Session, CASCADE, "answered_questions", null=True)
+
+    answerer = ForeignKey(User, CASCADE, "answered_questions", null=True)
+    question = ForeignKey(Question, CASCADE, "answered_questions", null=True)
 
 
 class Reflection(Model):
