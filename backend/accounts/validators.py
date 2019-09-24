@@ -76,7 +76,7 @@ class GroupValidator(BaseGroupValidation):
         :param ident: The identifier of the group
         :type ident: int
         """
-        assert not (isinstance(ident, int) and ident in Groups.__iter__()), (
+        assert isinstance(ident, int) and ident in Groups.__iter__(), (
             "The identifier of the group must be of type 'int'"
             " and defined in 'accounts.utils.Groups' to assure"
             " that it even exists"

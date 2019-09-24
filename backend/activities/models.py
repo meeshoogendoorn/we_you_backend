@@ -139,10 +139,10 @@ class Answered(Model):
 
     value = PositiveSmallIntegerField()
     answer = ForeignKey(Answer, SET_NULL, "answered_questions", null=True)
-    session = ForeignKey(Session, CASCADE, "answered_questions", null=True)
+    session = ForeignKey(Session, CASCADE, "answered_questions")
 
-    answerer = ForeignKey(User, CASCADE, "answered_questions", null=True)
-    question = ForeignKey(Question, CASCADE, "answered_questions", null=True)
+    answerer = ForeignKey(User, CASCADE, "answered_questions")
+    question = ForeignKey(Question, CASCADE, "answered_questions")
 
 
 class Reflection(Model):

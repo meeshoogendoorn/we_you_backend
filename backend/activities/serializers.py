@@ -1,20 +1,24 @@
 """Activity related serializers."""
 
 __all__ = (
+    "AnswerSerializer",
+    "AnswersSerializer",
+    "SessionSerializer",
+    "AnsweredSerializer",
+    "ReflectionSerializer",
+    "QuestionThemeSerializer",
 )
 
 import datetime
 
-from django.db.models.query import F, Q
+from django.db.models.query import Q
+from django.db.models.functions import Ceil
 from django.db.models.expressions import Subquery, Value
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import CurrentUserDefault
-
-from utilities.fields import HyperlinkedRelatedReadField
-from utilities.expressions import Count
 
 from activities.models import Answer
 from activities.models import Answers
@@ -31,12 +35,14 @@ from activities.validators import QuestionHasCompany
 from activities.validators import QuestionIsAnswered
 
 from accounts.utils import Groups, is_employer
-
 from accounts.models import User
 from accounts.validators import GroupValidator
 
 from companies.models import Company
 from communications.utils import MultiMailTransport
+
+from utilities.fields import HyperlinkedRelatedReadField
+from utilities.expressions import Count
 
 
 class AnswerSerializer(ModelSerializer):
@@ -45,7 +51,6 @@ class AnswerSerializer(ModelSerializer):
     class Meta:
         model = Answers
         fields = ("id", "label", "value", "answers")
-
 
 
 class AnswersSerializer(ModelSerializer):
@@ -122,7 +127,7 @@ class AnsweredSerializer(ModelSerializer):
 
     class Meta:
         model = Answered
-        fields = ("id", "value", "label", "answerer", "question", "property")
+        fields = ("id", "value", "label", "session", "answerer", "question")
 
     value = IntegerField(
         max_value=100,
@@ -173,19 +178,26 @@ class AnsweredSerializer(ModelSerializer):
         :rtype: activities.models.Answered
         """
         if "value" not in kwargs:
-            answer = self.validated_data["answer"]
-            index = self.get_index(answer)
-            answers = self.get_answers(answer)
-
-            kwargs["value"] = self.get_calculation(answers) * index
+            kwargs["value"] = self.get_calculation(
+                self.validated_data["answer"]
+            )
 
         return ModelSerializer.save(self, **kwargs)
 
-    def get_index(self, answer):
+    def get_relative_value(self, answer):
         """
-        Get the index of the answer relative to his siblings.
+        Get the value of the answer relative to his siblings.
 
-        TODO: test index retrieval
+        This is a value from 1 to n where n is the number of
+        siblings. The actual value will be calculated as:
+
+        v = ceil((100 / e) * n)
+
+        where
+            n = The position of the given answer relative to the
+                other answers.
+            e = The number of answers within a answer set
+            v = The actual value
         """
         queryset = Answers.objects.filter(values=answer)[:1]
         queryset = Answer.objects.filter(answers=queryset)
@@ -198,7 +210,7 @@ class AnsweredSerializer(ModelSerializer):
 
         return Subquery(queryset)
 
-    def get_answers(self, answer):
+    def get_sibling_answers(self, answer):
         """
         Get all 'sibling answers' from a answer though nested query.
         """
@@ -212,18 +224,20 @@ class AnsweredSerializer(ModelSerializer):
         Set the annotation on the (to be) subquery.
         """
         queryset = queryset.order_by()
-        queryset = queryset.values("__count")
         queryset = queryset.annotate(__count=Count("*"))
+        queryset = queryset.values("__count")
 
         return queryset
 
-    def get_calculation(self, queryset):
+    def get_calculation(self, answer):
         """
         Finalize the value by creating the calculation.
         """
+        relative = self.get_relative_value(answer)
+        queryset = self.get_sibling_answers(answer)
         queryset = self.set_annotation(queryset)
 
-        return Value(100) / Subquery(queryset)
+        return Ceil((Value(100) / Subquery(queryset)) * relative)
 
     def validate(self, attributes):
         """
