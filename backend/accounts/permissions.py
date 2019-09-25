@@ -7,7 +7,12 @@ __all__ = (
     "IsAcceptable",
     "IsManagement",
 
+    "IsEmployeeOrReadOnly",
+    "IsEmployeeAndReadOnly",
     "IsEmployerAndReadOnly",
+
+
+    "IsManagementOrReadOnly",
     "IsManagementAndReadOnly",
 )
 
@@ -197,3 +202,63 @@ class IsEmployeeAndReadOnly(IsAuthenticated):
             return is_employee(request.user)
 
         return is_administrator(request.user)
+
+
+class IsManagementOrReadOnly(IsAuthenticated):
+    """Permission for read only access or is management."""
+
+    def has_permission(self, request, view):
+        """
+        Check if the user is authenticated and management or read-only.
+
+        This permission will also provide (full) access to the
+        administrator.
+
+        :param request: The current request instance
+        :type request: rest_framework.request.Request
+
+        :param view: The current view instance
+        :type view: rest_framework.views.APIView
+
+        :return: Whether the permission was granted or not
+        :rtype: bool
+        """
+        if not IsAuthenticated.has_permission(self, request, view):
+            return False
+
+        if is_employee(request.user) or is_employer(request.user):
+            return request.method.upper() in (
+                'GET', 'HEAD', 'OPTIONS', 'TRACE'
+            )
+
+        return is_management(request.user)
+
+
+class IsEmployeeOrReadOnly(IsAuthenticated):
+    """Permission for read only access or is employee."""
+
+    def has_permission(self, request, view):
+        """
+        Check if the user is authenticated and employee or read-only.
+
+        This permission will also provide (full) access to the
+        administrator.
+
+        :param request: The current request instance
+        :type request: rest_framework.request.Request
+
+        :param view: The current view instance
+        :type view: rest_framework.views.APIView
+
+        :return: Whether the permission was granted or not
+        :rtype: bool
+        """
+        if not IsAuthenticated.has_permission(self, request, view):
+            return False
+
+        if is_employee(request.user) or is_employer(request.user):
+            return request.method.upper() in (
+                'GET', 'HEAD', 'OPTIONS', 'TRACE'
+            )
+
+        return is_management(request.user)

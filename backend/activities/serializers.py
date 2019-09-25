@@ -5,14 +5,15 @@ __all__ = (
     "AnswersSerializer",
     "SessionSerializer",
     "AnsweredSerializer",
+    "QuestionSerializer",
     "ReflectionSerializer",
+    "QuestionSetSerializer",
     "QuestionThemeSerializer",
 )
 
 import datetime
 
 from django.db.models.query import Q
-from django.db.models.functions import Ceil
 from django.db.models.expressions import Subquery, Value
 
 from rest_framework.exceptions import ValidationError
@@ -34,7 +35,7 @@ from activities.validators import SessionHasCompany
 from activities.validators import QuestionHasCompany
 from activities.validators import QuestionIsAnswered
 
-from accounts.utils import Groups, is_employer
+from accounts.utils import Groups, is_employee
 from accounts.models import User
 from accounts.validators import GroupValidator
 
@@ -45,12 +46,43 @@ from utilities.fields import HyperlinkedRelatedReadField
 from utilities.expressions import Count
 
 
+class QuestionSerializer(ModelSerializer):
+    """Serializer for a single question."""
+
+    class Meta:
+        model = Question
+        fields = ("id", "set", "answers", "question")
+
+    set = HyperlinkedRelatedReadField(
+        queryset=QuestionSet.objects.all(),
+        view_name=""
+    )
+
+    answers = HyperlinkedRelatedReadField(
+        queryset=Answers.objects.all(),
+        view_name=""
+    )
+
+
+class QuestionSetSerializer(ModelSerializer):
+    """Serializer for question sets."""
+
+    class Meta:
+        model = QuestionSet
+        fields = ("id", "label", "theme")
+
+    theme = HyperlinkedRelatedReadField(
+        queryset=QuestionTheme.objects.all(),
+        view_name="",
+    )
+
+
 class AnswerSerializer(ModelSerializer):
     """Serializer for a single answer."""
 
     class Meta:
-        model = Answers
-        fields = ("id", "label", "value", "answers")
+        model = Answer
+        fields = ("id", "label", "order", "answers")
 
 
 class AnswersSerializer(ModelSerializer):
@@ -61,7 +93,7 @@ class AnswersSerializer(ModelSerializer):
         fields = ("id", "label", "values")
 
     values = HyperlinkedRelatedReadField(
-        queryset=Answer.objects.all(),
+        queryset=Answer.objects.filter(deleted__isnull=True),
         view_name="",
     )
 
@@ -102,6 +134,19 @@ class SessionSerializer(ModelSerializer):
         return attrs
 
 
+class _TimeAwareHyperlinkField(HyperlinkedRelatedReadField):
+    """Special related field for relations towards active sessions."""
+
+    def get_queryset(self):
+        """
+        Filter out the sessions that already have past.
+
+        :return: The filtered queryset
+        :rtype: django.db.models.query.QuerySet
+        """
+        return self.queryset.filter(until__gte=datetime.datetime.utcnow())
+
+
 class QuestionThemeSerializer(ModelSerializer):
     """Serializer for the question theme."""
 
@@ -115,7 +160,7 @@ class QuestionThemeSerializer(ModelSerializer):
         view_name="",
     )
 
-    sessions = HyperlinkedRelatedReadField(
+    sessions = _TimeAwareHyperlinkField(
         many=True,
         queryset=Session.objects.all(),
         view_name="",
@@ -128,6 +173,7 @@ class AnsweredSerializer(ModelSerializer):
     class Meta:
         model = Answered
         fields = ("id", "value", "label", "session", "answerer", "question")
+        extra_kwargs = {"answerer": {"write_only": True}}
 
     value = IntegerField(
         max_value=100,
@@ -200,7 +246,9 @@ class AnsweredSerializer(ModelSerializer):
             v = The actual value
         """
         queryset = Answers.objects.filter(values=answer)[:1]
-        queryset = Answer.objects.filter(answers=queryset)
+        queryset = Answer.objects.filter(
+            answers=queryset, deleted__isnull=True
+        )
 
         queryset = queryset.order_by("order")
         queryset = queryset.filter(order__lte=answer.order)
@@ -215,7 +263,9 @@ class AnsweredSerializer(ModelSerializer):
         Get all 'sibling answers' from a answer though nested query.
         """
         queryset = Answers.objects.filter(values=answer)[:1]
-        queryset = Answer.objects.filter(answers=queryset)
+        queryset = Answer.objects.filter(
+            answers=queryset, deleted__isnull=True
+        )
 
         return queryset
 
@@ -237,7 +287,7 @@ class AnsweredSerializer(ModelSerializer):
         queryset = self.get_sibling_answers(answer)
         queryset = self.set_annotation(queryset)
 
-        return Ceil((Value(100) / Subquery(queryset)) * relative)
+        return (Value(100) / Subquery(queryset)) * relative
 
     def validate(self, attributes):
         """
@@ -271,31 +321,24 @@ class AnsweredSerializer(ModelSerializer):
 
         return attributes
 
-    def get_field_names(self, declared_fields, info):
+    def get_extra_kwargs(self):
         """
-        Overridden to remove fields based on permissions.
+        Overridden to hide the answerer for management or employer.
 
-        This method will remove the 'answerer' field from the
-        serializer when the current user is a employee.
+        This is because a employee may never know who gave answers
+        except when the user created a reflection, but that's handled
+        within the ReflectionSerializer.
 
-        This is because a employee may never know who gave
-        answers except when the user created a reflection,
-        but that's handled within the ReflectionSerializer.
-
-        :param declared_fields: The declared fields of this serializer
-        :type declared_fields: dict
-
-        :param info: Additional info to be used
-
-        :return: The names of the serializers to use
-        :rtype: tuple
+        :return: The extra keyword arguments for the fields
+        :rtype: dict
         """
-        fields = ModelSerializer.get_field_names(self, declared_fields, info)
+        extra = ModelSerializer.get_extra_kwargs(self)
 
-        if is_employer(self.context.request.user, False):
-            del fields[fields.index("answerer")]
+        if is_employee(self.context.request.user):
+            current_arguments = extra.get(extra["answerer"], {})
+            extra["answerer"] = {**current_arguments, "write_only": False}
 
-        return tuple(fields)
+        return extra
 
 
 class ReflectionSerializer(ModelSerializer):

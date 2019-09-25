@@ -13,20 +13,13 @@ __all__ = (
 
 )
 
-import math
-
 from django.db.models import Model
 from django.db.models.fields import TextField
 from django.db.models.fields import CharField
+from django.db.models.fields import DecimalField
 from django.db.models.fields import DateTimeField
-from django.db.models.fields import PositiveSmallIntegerField
 from django.db.models.fields.related import CASCADE, ForeignKey
 from django.db.models.fields.related import SET_NULL, ManyToManyField
-
-from django.db.models.query import F, Q
-from django.db.models.functions import Ceil
-from django.db.models.aggregates import Count
-from django.db.models.expressions import Subquery
 
 from accounts.models import User
 from companies.models import Company
@@ -95,7 +88,7 @@ class Answer(Model):
         unique_together = (("answers", "order"), ("answers", "label"))
 
     label = CharField(max_length=255)
-    order = PositiveSmallIntegerField()
+    order = DecimalField()
 
     answers = ForeignKey(Answers, CASCADE, "values")
     deleted = DateTimeField(null=True)
@@ -118,6 +111,7 @@ class Question(Model):
         ordering = ("id",)
 
     set = ForeignKey(QuestionSet, CASCADE, "questions")
+    deleted = DateTimeField(null=True)
     answers = ForeignKey(Answers, CASCADE, "questions")
     question = CharField(max_length=255, unique=True)
 
@@ -142,7 +136,7 @@ class Answered(Model):
     session = ForeignKey(Session, CASCADE, "answered_questions")
 
     answerer = ForeignKey(User, CASCADE, "answered_questions")
-    question = ForeignKey(Question, CASCADE, "answered_questions")
+    question = ForeignKey(Question, SET_NULL, "answered_questions", null=True)
 
 
 class Reflection(Model):
