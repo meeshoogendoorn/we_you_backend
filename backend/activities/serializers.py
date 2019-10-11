@@ -47,7 +47,6 @@ class AnswerSerializer(ModelSerializer):
         fields = ("id", "label", "value", "answers")
 
 
-
 class AnswersSerializer(ModelSerializer):
     """Serializer for a answer set."""
 
