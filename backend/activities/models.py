@@ -23,6 +23,7 @@ from django.db.models.fields.related import SET_NULL, ManyToManyField
 
 from accounts.models import User
 from companies.models import Company
+from activities.utils import AnswerStyles
 
 
 class QuestionTheme(Model):
@@ -35,6 +36,17 @@ class QuestionTheme(Model):
     multiple question sets.
     """
     label = CharField(max_length=255)
+
+
+class QuestionStyle(Model):
+    """
+    A question style.
+
+    These records define the way a certain answer should be rendered,
+    this way we can provide a better user experience by e.g. rendering
+    a slide instead of radio buttons.
+    """
+    label = CharField(max_length=255, editable=False)
 
 
 class QuestionSet(Model):
@@ -73,6 +85,7 @@ class Answers(Model):
     answers.
     """
     label = CharField(max_length=255, unique=True)
+    style = ForeignKey(QuestionStyle, CASCADE, "styles", default=1)
 
 
 class Answer(Model):
@@ -127,12 +140,33 @@ class Answered(Model):
     of a certain question session.
     """
 
+    # TODO: fix bug in 'unique_together' ams nullable session
     class Meta:
         unique_together = ("answerer", "question", "session")
         order_with_respect_to = "question"
 
-    value = PositiveSmallIntegerField()
+    value = DecimalField()
     answer = ForeignKey(Answer, SET_NULL, "answered_questions", null=True)
+    session = ForeignKey(Session, CASCADE, "answered_questions")
+
+    answerer = ForeignKey(User, CASCADE, "answered_questions")
+    question = ForeignKey(Question, SET_NULL, "answered_questions", null=True)
+
+
+class AnsweredPlain(Model):
+    """
+    A open question answer (which is just plain text.
+
+    This allows for open answers, but we aren't really sure what
+    to do with it.
+    """
+
+    # TODO: fix bug in 'unique_together' ams nullable session
+    class Meta:
+        unique_together = ("answerer", "question", "session")
+        order_with_respect_to = "question"
+
+    value = TextField()
     session = ForeignKey(Session, CASCADE, "answered_questions")
 
     answerer = ForeignKey(User, CASCADE, "answered_questions")

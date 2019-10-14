@@ -1,0 +1,23 @@
+[
+  {
+    "pk": 1,
+    "model": "activities.AnswerStyle",
+    "fields": {
+      "label": "radio"
+    }
+  },
+  {
+    "pk": 2,
+    "model": "activities.AnswerStyle",
+    "fields": {
+      "label": "slide"
+    }
+  },
+  {
+    "pk": 3,
+    "model": "activities.AnswerStyle",
+    "fields": {
+      "label": "plain"
+    }
+  }
+]
