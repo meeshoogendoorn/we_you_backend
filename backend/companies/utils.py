@@ -9,7 +9,7 @@ from companies.factories import CompanyFactory
 from companies.factories import ColourThemeFactory
 
 
-def generate_company(employers=1, employees=15):
+def generate_company(employers=1, employees=15):  # pragma: no cover
     company = CompanyFactory()
 
     ColourThemeFactory(company=company)

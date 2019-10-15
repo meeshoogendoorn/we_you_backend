@@ -11,7 +11,7 @@ import random
 from factory.faker import Faker
 from factory.django import DjangoModelFactory
 from factory.helpers import lazy_attribute
-from factory.declarations import Iterator
+from factory.declarations import RelatedFactory, Iterator
 
 from accounts.utils import Groups
 from accounts.models import User
@@ -20,34 +20,13 @@ from companies.models import ColourTheme
 from companies.models import Member, Company
 
 
-class CompanyFactory(DjangoModelFactory):
-    """Factory to generate companies."""
-
-    class Meta:
-        model = Company
-
-    name = Faker("company")
-
-
-class MemberFactory(DjangoModelFactory):
-    """Factory to make a account a member."""
-
-    class Meta:
-        model = Member
-
-    company = Iterator(Company.objects.all())
-    account = Iterator(User.objects.filter(
-        group__in=(Groups.employee, Groups.employer)
-    ))
-
-
 class ColourThemeFactory(DjangoModelFactory):
     """Factory for color themes."""
 
     class Meta:
         model = ColourTheme
 
-    company = Iterator(CompanyFactory)
+    company = Iterator(Company.objects.all())
 
     @lazy_attribute
     def primary(self):
@@ -68,3 +47,25 @@ class ColourThemeFactory(DjangoModelFactory):
         :rtype: int
         """
         return random.randint(0x000000, 0xFFFFFF)
+
+
+class CompanyFactory(DjangoModelFactory):
+    """Factory to generate companies."""
+
+    class Meta:
+        model = Company
+
+    name = Faker("company")
+    theme = RelatedFactory(ColourThemeFactory, "company")
+
+
+class MemberFactory(DjangoModelFactory):
+    """Factory to make a account a member."""
+
+    class Meta:
+        model = Member
+
+    company = Iterator(Company.objects.all())
+    account = Iterator(User.objects.filter(
+        group__in=(Groups.employee, Groups.employer)
+    ))

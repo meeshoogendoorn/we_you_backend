@@ -1,5 +1,11 @@
 """Company related models."""
 
+__all__ = (
+    "Member",
+    "Company",
+    "ColourTheme",
+)
+
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.dispatch.dispatcher import receiver
 
@@ -17,18 +23,21 @@ from utilities.models import Image
 
 class Company(Model):
     """The main company model, exists mainly for the relations."""
+
     name = CharField(max_length=255)
 
 
 class Member(Model):
     """Connects an accounts.User to a company."""
+
     company = ForeignKey(Company, CASCADE, "members")
     account = OneToOneField(User, CASCADE, related_name="member")
 
 
 class ColourTheme(Model):
     """The storage for the colouring theme stored for a company."""
-    company = OneToOneField(Company, CASCADE)
+
+    company = OneToOneField(Company, CASCADE, related_name="theme")
 
     primary = BigIntegerField(validators=[
         MinValueValidator(0x000000), MaxValueValidator(0xFFFFFFFF)]
@@ -42,7 +51,7 @@ class ColourTheme(Model):
 
 
 @receiver(pre_delete, sender=Company)
-def cascade_delete_company(sender, instance, **kwargs):
+def _cascade_delete_company(sender, instance, **kwargs):
     """
     Forward the deletion of a user account when the company is deleted.
 
