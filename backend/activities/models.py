@@ -18,11 +18,13 @@ from django.db.models.fields import TextField
 from django.db.models.fields import CharField
 from django.db.models.fields import DecimalField
 from django.db.models.fields import DateTimeField
+from django.db.models.fields import PositiveSmallIntegerField
 from django.db.models.fields.related import CASCADE, ForeignKey
 from django.db.models.fields.related import SET_NULL, ManyToManyField
 
 from accounts.models import User
 from companies.models import Company
+from activities.utils import AnswerStyles
 
 
 class QuestionTheme(Model):
@@ -35,6 +37,17 @@ class QuestionTheme(Model):
     multiple question sets.
     """
     label = CharField(max_length=255)
+
+
+class AnswerStyle(Model):
+    """
+    A answer style.
+
+    These records define the way a certain answer should be rendered,
+    this way we can provide a better user experience by e.g. rendering
+    a slide instead of radio buttons.
+    """
+    label = CharField(max_length=255, editable=False)
 
 
 class QuestionSet(Model):
@@ -73,6 +86,9 @@ class Answers(Model):
     answers.
     """
     label = CharField(max_length=255, unique=True)
+    style = ForeignKey(
+        AnswerStyle, CASCADE, "styles", default=AnswerStyles.radio
+    )
 
 
 class Answer(Model):
@@ -88,7 +104,7 @@ class Answer(Model):
         unique_together = (("answers", "order"), ("answers", "label"))
 
     label = CharField(max_length=255)
-    order = DecimalField()
+    order = PositiveSmallIntegerField()
 
     answers = ForeignKey(Answers, CASCADE, "values")
     deleted = DateTimeField(null=True)
@@ -111,8 +127,10 @@ class Question(Model):
         ordering = ("id",)
 
     set = ForeignKey(QuestionSet, CASCADE, "questions")
+    weight = DecimalField(max_digits=3, decimal_places=2, default=1)
     deleted = DateTimeField(null=True)
     answers = ForeignKey(Answers, CASCADE, "questions")
+
     question = CharField(max_length=255, unique=True)
 
 
@@ -127,16 +145,37 @@ class Answered(Model):
     of a certain question session.
     """
 
+    # TODO: fix bug in 'unique_together' ams nullable session
     class Meta:
         unique_together = ("answerer", "question", "session")
         order_with_respect_to = "question"
 
-    value = PositiveSmallIntegerField()
+    value = DecimalField(max_digits=4, decimal_places=2)
     answer = ForeignKey(Answer, SET_NULL, "answered_questions", null=True)
     session = ForeignKey(Session, CASCADE, "answered_questions")
 
     answerer = ForeignKey(User, CASCADE, "answered_questions")
     question = ForeignKey(Question, SET_NULL, "answered_questions", null=True)
+
+
+class AnsweredPlain(Model):
+    """
+    A open question answer (which is just plain text.
+
+    This allows for open answers, but we aren't really sure what
+    to do with it.
+    """
+
+    # TODO: fix bug in 'unique_together' ams nullable session
+    class Meta:
+        unique_together = ("answerer", "question", "session")
+        order_with_respect_to = "question"
+
+    value = TextField()
+    session = ForeignKey(Session, CASCADE)
+
+    answerer = ForeignKey(User, CASCADE)
+    question = ForeignKey(Question, SET_NULL, null=True)
 
 
 class Reflection(Model):
