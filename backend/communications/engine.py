@@ -42,6 +42,8 @@ class EnvironmentEngine(object):
         """
         def callback(match):
             replace = context[self.mapping[match.group(1)]]
+            replace = replace.replace(" ", "").lower()
+
             return escape(replace) if self.no_html else replace
 
         return self.pattern.sub(callback, content)

@@ -18,6 +18,7 @@ from django.db.models.fields import TextField
 from django.db.models.fields import CharField
 from django.db.models.fields import DecimalField
 from django.db.models.fields import DateTimeField
+from django.db.models.fields import PositiveSmallIntegerField
 from django.db.models.fields.related import CASCADE, ForeignKey
 from django.db.models.fields.related import SET_NULL, ManyToManyField
 
@@ -38,9 +39,9 @@ class QuestionTheme(Model):
     label = CharField(max_length=255)
 
 
-class QuestionStyle(Model):
+class AnswerStyle(Model):
     """
-    A question style.
+    A answer style.
 
     These records define the way a certain answer should be rendered,
     this way we can provide a better user experience by e.g. rendering
@@ -85,7 +86,9 @@ class Answers(Model):
     answers.
     """
     label = CharField(max_length=255, unique=True)
-    style = ForeignKey(QuestionStyle, CASCADE, "styles", default=1)
+    style = ForeignKey(
+        AnswerStyle, CASCADE, "styles", default=AnswerStyles.radio
+    )
 
 
 class Answer(Model):
@@ -101,7 +104,7 @@ class Answer(Model):
         unique_together = (("answers", "order"), ("answers", "label"))
 
     label = CharField(max_length=255)
-    order = DecimalField()
+    order = PositiveSmallIntegerField()
 
     answers = ForeignKey(Answers, CASCADE, "values")
     deleted = DateTimeField(null=True)
@@ -124,8 +127,10 @@ class Question(Model):
         ordering = ("id",)
 
     set = ForeignKey(QuestionSet, CASCADE, "questions")
+    weight = DecimalField(max_digits=3, decimal_places=2, default=1)
     deleted = DateTimeField(null=True)
     answers = ForeignKey(Answers, CASCADE, "questions")
+
     question = CharField(max_length=255, unique=True)
 
 
@@ -145,7 +150,7 @@ class Answered(Model):
         unique_together = ("answerer", "question", "session")
         order_with_respect_to = "question"
 
-    value = DecimalField()
+    value = DecimalField(max_digits=4, decimal_places=2)
     answer = ForeignKey(Answer, SET_NULL, "answered_questions", null=True)
     session = ForeignKey(Session, CASCADE, "answered_questions")
 
@@ -167,10 +172,10 @@ class AnsweredPlain(Model):
         order_with_respect_to = "question"
 
     value = TextField()
-    session = ForeignKey(Session, CASCADE, "answered_questions")
+    session = ForeignKey(Session, CASCADE)
 
-    answerer = ForeignKey(User, CASCADE, "answered_questions")
-    question = ForeignKey(Question, SET_NULL, "answered_questions", null=True)
+    answerer = ForeignKey(User, CASCADE)
+    question = ForeignKey(Question, SET_NULL, null=True)
 
 
 class Reflection(Model):

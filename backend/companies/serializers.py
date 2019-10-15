@@ -22,9 +22,8 @@ class CompanySerializer(ModelSerializer):
 
 
 class ColourThemeSerializer(ModelSerializer):
-    """
-    Serializer for the main colour theme.
-    """
+    """Serializer for the main colour theme."""
+
     class Meta:
         model = ColourTheme
         fields = ("id", "company", "primary", "accent", "logo")

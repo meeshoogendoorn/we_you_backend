@@ -18,8 +18,8 @@ class Company(Model):
 
 class Member(Model):
     """Connects an accounts.User to a company."""
-    company = OneToOneField(Company, CASCADE)
-    account = ForeignKey(User, CASCADE, related_name="member")
+    company = ForeignKey(Company, CASCADE)
+    account = OneToOneField(User, CASCADE, related_name="member")
 
 
 class ColourTheme(Model):

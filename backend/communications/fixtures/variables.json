@@ -3,7 +3,7 @@
     "model": "communications.Variable",
     "pk": 1,
     "fields": {
-      "name": "Email",
+      "name": "email",
       "attr": "email"
     }
   },
@@ -11,7 +11,7 @@
     "model": "communications.Variable",
     "pk": 2,
     "fields": {
-      "name": "Wachtwoord",
+      "name": "wachtwoord",
       "attr": "password"
     }
   },
@@ -19,7 +19,7 @@
     "model": "communications.Variable",
     "pk": 3,
     "fields": {
-      "name": "Bedrijfsnaam",
+      "name": "bedrijfsnaam",
       "attr": "company"
     }
   },
@@ -27,7 +27,7 @@
     "model": "communications.Variable",
     "pk": 4,
     "fields": {
-      "name": "Vragen Thema",
+      "name": "vragenthema",
       "attr": "q_theme"
     }
   },
@@ -35,7 +35,7 @@
     "model": "communications.Variable",
     "pk": 5,
     "fields": {
-      "name": "Vragen set",
+      "name": "vragenset",
       "attr": "q_set"
     }
   },
@@ -43,7 +43,7 @@
     "model": "communications.Variable",
     "pk": 6,
     "fields": {
-      "name": "Beschrijving",
+      "name": "beschrijving",
       "attr": "description"
     }
   },
@@ -51,7 +51,7 @@
     "model": "communications.Variable",
     "pk": 7,
     "fields": {
-      "name": "Vraag Nummer",
+      "name": "vraagnummer",
       "attr": "q_id"
     }
   },
@@ -59,7 +59,7 @@
     "model": "communications.Variable",
     "pk": 8,
     "fields": {
-      "name": "Vraag",
+      "name": "vraag",
       "attr": "question"
     }
   },
