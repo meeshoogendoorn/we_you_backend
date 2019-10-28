@@ -28,7 +28,7 @@ class MemberSerializer(ModelSerializer):
 
     account = HyperlinkedRelatedReadField(
         queryset=User.objects.all(),
-        view_name="account",
+        view_name="account-detail",
     )
 
     company = HyperlinkedRelatedReadField(

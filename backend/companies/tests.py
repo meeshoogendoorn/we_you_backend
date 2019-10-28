@@ -1,3 +1,5 @@
+"""Unittests for the company app."""
+
 from rest_framework import status
 
 from rest_framework.test import APITestCase
@@ -8,21 +10,35 @@ from rest_framework.request import Request
 
 from accounts.utils import Groups
 from accounts.models import Group
+
 from accounts.factories import UserFactory
 from accounts.factories import AuthFactory
 
-from companies.urls import urlpatterns
+from accounts.urls import urlpatterns as accounts_urlpatterns
+from companies.urls import urlpatterns as company_urlpatterns
+
+from companies.models import Member
+
 from companies.factories import MemberFactory
 from companies.factories import CompanyFactory
 
 
 class TestCompanyView(URLPatternsTestCase, APITestCase):
+    """Unittests for the CompanyView."""
 
     fixtures = ["groups"]
-    urlpatterns = urlpatterns
+    urlpatterns = company_urlpatterns
 
     @classmethod
     def setUpTestData(cls):
+        """
+        Initialize the class by populating the database.
+
+        Some notes:
+          - The 'ignored' company is to make a clear difference in the
+            response for management and members of a company.
+        """
+
         cls.company = CompanyFactory()
         cls.ignored = CompanyFactory()
 
@@ -173,7 +189,7 @@ class TestCompanyView(URLPatternsTestCase, APITestCase):
         :rtype: list
         """
         return [
-            reverse("member-detail", args=(member.id,), request=request)
+            reverse("member-detail", args=[member.id], request=request)
             for member in members
         ]
 
@@ -192,6 +208,193 @@ class TestCompanyView(URLPatternsTestCase, APITestCase):
         """
         return reverse(
             "colour-theme-detail",
-            args=(company.theme.id,),
+            args=[company.theme.id],
             request=request
         )
+
+
+class TestMembersView(URLPatternsTestCase, APITestCase):
+    """Unittests for the MemberViewSet."""
+
+    fixtures = ["groups"]
+    urlpatterns = accounts_urlpatterns + company_urlpatterns
+
+    @classmethod
+    def setUpTestData(cls):
+        employer_group = Group.objects.get(id=Groups.employer)
+        employee_group = Group.objects.get(id=Groups.employee)
+        managing_group = Group.objects.get(id=Groups.management)
+
+        cls.companyA = CompanyFactory()
+        cls.companyB = CompanyFactory()
+
+        cls.employerA = UserFactory(group=employer_group)
+        cls.employeeA = UserFactory(group=employee_group)
+
+        cls.employerB = UserFactory(group=employer_group)
+        cls.employeeB = UserFactory(group=employee_group)
+
+        cls.management = UserFactory(group=managing_group)
+
+        cls.employee_a_token = AuthFactory(user=cls.employeeA)
+        cls.employer_a_token = AuthFactory(user=cls.employerA)
+        cls.employee_b_token = AuthFactory(user=cls.employeeB)
+        cls.employer_b_token = AuthFactory(user=cls.employerB)
+        cls.management_token = AuthFactory(user=cls.management)
+
+        MemberFactory(account=cls.employerA, company=cls.companyA)
+        MemberFactory(account=cls.employeeA, company=cls.companyA)
+        MemberFactory(account=cls.employerB, company=cls.companyB)
+        MemberFactory(account=cls.employeeB, company=cls.companyB)
+
+    def test_list_members_as_employer(self):
+        """Test the response of the member view as employer."""
+
+        with self.subTest(user="employer A"):
+            self._test_list_members_as_employer(
+                self.employer_a_token.plain, self.companyA.members.all()
+            )
+
+        with self.subTest(user="employer B"):
+            self._test_list_members_as_employer(
+                self.employer_b_token.plain, self.companyB.members.all()
+            )
+
+    def _test_list_members_as_employer(self, token, members):
+        """
+        Actually test the members list as a employee.
+
+        :param token: The authentication token to use
+        :type token: str
+
+        :param members: The members of the company
+        :type members: django.db.models.query.QuerySet
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+
+        response = self.client.get(reverse("member-list"))
+
+        request = Request(response.wsgi_request)
+        members = [
+            {
+                "id": i,
+                "account": reverse("account-detail", [a], None, request),
+                "company": reverse("company-detail", [c], None, request),
+            }
+
+            for i, c, a in members.values_list("id", "company", "account")
+        ]
+
+        self.assertListEqual(members, response.data)
+
+    def test_list_members_as_employee(self):
+        """Test the response of the member view as employer."""
+
+        with self.subTest(user="employee A"):
+            self._test_list_members_as_employee(
+                self.employee_a_token.plain,
+                self.employeeA.member.id
+            )
+
+        with self.subTest(user="employee B"):
+            self._test_list_members_as_employee(
+                self.employee_b_token.plain,
+                self.employeeB.member.id
+            )
+
+    def _test_list_members_as_employee(self, token, member):
+        """
+        Actually test the members list as a employee.
+
+        :param token: The authentication token to use
+        :type token: str
+
+        :param members: The members of the company
+        :type members: django.db.models.query.QuerySet
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+
+        response = self.client.get(reverse("member-list"))
+
+        request = Request(response.wsgi_request)
+        members = Member.objects.filter(id=member)
+        members = [
+            {
+                "id": i,
+                "account": reverse("account-detail", [a], None, request),
+                "company": reverse("company-detail", [c], None, request),
+            }
+
+            for i, c, a in members.values_list("id", "company", "account")
+        ]
+
+        self.assertListEqual(members, response.data)
+
+    def test_list_members_as_management(self):
+        """Test the response of the member view as management."""
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.management_token.plain}"
+        )
+
+        response = self.client.get(reverse("member-list"))
+
+        request = Request(response.wsgi_request)
+        members = Member.objects.all()
+        members = [
+            {
+                "id": i,
+                "account": reverse("account-detail", [a], None, request),
+                "company": reverse("company-detail", [c], None, request),
+            }
+
+            for i, c, a in members.values_list("id", "company", "account")
+        ]
+
+        self.assertListEqual(members, response.data)
+
+
+class TestCompanyThemeView(URLPatternsTestCase, APITestCase):
+    """Unittests for the Company Theme ViewSet."""
+
+    fixtures = ["groups"]
+    urlpatterns = company_urlpatterns
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.company = CompanyFactory()
+
+        cls.employer = UserFactory(group=Group.objects.get(id=Groups.employer))
+        cls.employee = UserFactory(group=Group.objects.get(id=Groups.employee))
+        cls.managing = UserFactory(
+            group=Group.objects.get(id=Groups.management)
+        )
+
+        cls.employee_token = AuthFactory(user=cls.employee)
+        cls.employer_token = AuthFactory(user=cls.employer)
+        cls.managing_token = AuthFactory(user=cls.managing)
+
+        MemberFactory(account=cls.employer, company=cls.company)
+        MemberFactory(account=cls.employee, company=cls.company)
+
+    def test_list_colours_as_employee(self):
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.employee_token.plain}"
+        )
+
+        response = self.client.get(reverse("colour-theme-list"))
+        expected = [
+            {
+                "company": reverse(
+                    "company-detail",
+                    [self.company.id],
+                    None,
+                    Request(response.wsgi_request)
+                ),
+
+                "primary": self.company.theme.primary,
+                "accent": self.company.theme.accent,
+            }
+        ]
+
+        self.assertSequenceEqual(expected, response.data)
