@@ -8,6 +8,7 @@ from companies.factories import MemberFactory
 from companies.factories import CompanyFactory
 from companies.factories import ColourThemeFactory
 
+from analytics.models import MetaLink
 
 def generate_company(employers=1, employees=15):  # pragma: no cover
     company = CompanyFactory()
@@ -26,3 +27,10 @@ def generate_company(employers=1, employees=15):  # pragma: no cover
         MemberFactory(account=account, company=company)
 
     return company
+
+def _generate_metadata(account)
+
+def generate_environment(employer=1, employees=15):
+    company = generate_company(employer, employees)
+
+    meta_link = MetaLink.
