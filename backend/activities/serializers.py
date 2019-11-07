@@ -14,7 +14,6 @@ __all__ = (
 import datetime
 
 from django.db.models.query import Q
-from django.db.models.expressions import Subquery, Value
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import IntegerField
@@ -39,11 +38,12 @@ from accounts.utils import Groups, is_employee
 from accounts.models import User
 from accounts.validators import GroupValidator
 
+from analytics.query import get_value_query
+
 from companies.models import Company
 from communications.utils import MultiMailTransport
 
 from utilities.fields import HyperlinkedRelatedReadField
-from utilities.expressions import Count
 
 
 class QuestionSerializer(ModelSerializer):
@@ -103,7 +103,7 @@ class SessionSerializer(ModelSerializer):
 
     class Meta:
         model = Session
-        fields = ("id", "set", "theme", "start", "until", "company")
+        fields = ("id", "set", "value", "theme", "start", "until", "company")
 
     theme = HyperlinkedRelatedReadField(
         queryset=QuestionTheme.objects.all(),
@@ -223,71 +223,20 @@ class AnsweredSerializer(ModelSerializer):
         :return: The newly created 'Answered' instance
         :rtype: activities.models.Answered
         """
-        if "value" not in kwargs:
-            kwargs["value"] = self.get_calculation(
-                self.validated_data["answer"]
-            )
+        return ModelSerializer.save(self, **kwargs, value=self.get_calc())
 
-        return ModelSerializer.save(self, **kwargs)
-
-    def get_relative_value(self, answer):
+    def get_calc(self):
         """
-        Get the value of the answer relative to his siblings.
+        Get the query to calculate the value.
 
-        This is a value from 1 to n where n is the number of
-        siblings. The actual value will be calculated as:
-
-        v = ceil((100 / e) * n)
-
-        where
-            n = The position of the given answer relative to the
-                other answers.
-            e = The number of answers within a answer set
-            v = The actual value
+        :return: The query to calculate the value.
+        :rtype: django.db.models.query.QuerySet
         """
-        queryset = Answers.objects.filter(values=answer)[:1]
-        queryset = Answer.objects.filter(
-            answers=queryset, deleted__isnull=True
-        )
+        user = self.context["request"].user
+        data = self.validated_data["value"]
+        ques = self.validated_data["question"]
 
-        queryset = queryset.order_by("order")
-        queryset = queryset.filter(order__lte=answer.order)
-
-        queryset = queryset.annotate(__index=Count("*"))
-        queryset = queryset.values("__index")
-
-        return Subquery(queryset)
-
-    def get_sibling_answers(self, answer):
-        """
-        Get all 'sibling answers' from a answer though nested query.
-        """
-        queryset = Answers.objects.filter(values=answer)[:1]
-        queryset = Answer.objects.filter(
-            answers=queryset, deleted__isnull=True
-        )
-
-        return queryset
-
-    def set_annotation(self, queryset):
-        """
-        Set the annotation on the (to be) subquery.
-        """
-        queryset = queryset.order_by()
-        queryset = queryset.annotate(__count=Count("*"))
-        queryset = queryset.values("__count")
-
-        return queryset
-
-    def get_calculation(self, answer):
-        """
-        Finalize the value by creating the calculation.
-        """
-        relative = self.get_relative_value(answer)
-        queryset = self.get_sibling_answers(answer)
-        queryset = self.set_annotation(queryset)
-
-        return (Value(100) / Subquery(queryset)) * relative
+        return get_value_query(user, data, ques)
 
     def validate(self, attributes):
         """

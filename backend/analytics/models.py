@@ -1,6 +1,7 @@
 """Analytic related models, will provide the additional information."""
 
 __all__ = (
+    "MetaBase",
     "MetaData",
     "MetaLink",
     "MetaType",
@@ -17,6 +18,15 @@ from django.db.models.fields.related import OneToOneField, ForeignKey
 
 from accounts.models import User
 from companies.models import Company
+
+
+class MetaBase(Model):
+    """Base mixin for all external models that have a certain weight."""
+
+    class Meta:
+        abstract = True
+
+    weight = DecimalField(default=1, max_digits=3, decimal_places=1)
 
 
 class MetaLink(Model):

@@ -24,10 +24,11 @@ from django.db.models.fields.related import SET_NULL, ManyToManyField
 
 from accounts.models import User
 from companies.models import Company
+from analytics.models import MetaBase
 from activities.utils import AnswerStyles
 
 
-class QuestionTheme(Model):
+class QuestionTheme(MetaBase, Model):
     """
     The question theme.
 
@@ -36,6 +37,7 @@ class QuestionTheme(Model):
     theme is interesting it can be extended throughout
     multiple question sets.
     """
+
     label = CharField(max_length=255)
 
 
@@ -47,10 +49,11 @@ class AnswerStyle(Model):
     this way we can provide a better user experience by e.g. rendering
     a slide instead of radio buttons.
     """
+
     label = CharField(max_length=255, editable=False)
 
 
-class QuestionSet(Model):
+class QuestionSet(MetaBase, Model):
     """
     A question set for a single session.
 
@@ -58,14 +61,14 @@ class QuestionSet(Model):
     be questioned, and the result will only be used when all
     questions are answered.
     """
+
     label = CharField(max_length=255)
     theme = ManyToManyField(QuestionTheme, "sets")
 
 
 class Session(Model):
-    """
-    A single session of questions for a theme.
-    """
+    """A single session of questions for a theme."""
+
     class Meta:
         unique_together = ("company", "theme")
 
@@ -75,7 +78,7 @@ class Session(Model):
     start = DateTimeField()
     until = DateTimeField()
 
-    company = ForeignKey(Company, "sessions")
+    company = ForeignKey(Company, CASCADE, "sessions")
 
 
 class Answers(Model):
@@ -85,6 +88,7 @@ class Answers(Model):
     This model is mainly just a parent for the actual
     answers.
     """
+
     label = CharField(max_length=255, unique=True)
     style = ForeignKey(
         AnswerStyle, CASCADE, "styles", default=AnswerStyles.radio
@@ -110,7 +114,7 @@ class Answer(Model):
     deleted = DateTimeField(null=True)
 
 
-class Question(Model):
+class Question(MetaBase, Model):
     """
     A single question to be answered.
 
@@ -127,7 +131,7 @@ class Question(Model):
         ordering = ("id",)
 
     set = ForeignKey(QuestionSet, CASCADE, "questions")
-    weight = DecimalField(max_digits=3, decimal_places=2, default=1)
+
     deleted = DateTimeField(null=True)
     answers = ForeignKey(Answers, CASCADE, "questions")
 

@@ -5,6 +5,9 @@ __all__ = (
 
 import datetime
 
+from django.db.models.query import F
+from django.db.models.aggregates import Avg
+
 from rest_framework.mixins import ListModelMixin
 from rest_framework.mixins import CreateModelMixin
 from rest_framework.mixins import RetrieveModelMixin
@@ -88,7 +91,10 @@ class AnswersViewSet(ModelViewSet):
 class SessionViewSet(ModelViewSet):
     """View-set for question sessions."""
 
-    queryset = Session.objects.all()
+    queryset = Session.objects.annotate(
+        value=Avg("answered_questions__value") * F("set__weight")
+    )
+
     serializer_class = SessionSerializer
     permission_classes = (IsManagementOrReadOnly,)
 

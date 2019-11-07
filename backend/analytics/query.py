@@ -1,72 +1,74 @@
 """Query generators for the analytics."""
 
 __all__ = (
-    "ValueCalculator",
+    "get_value_query",
+    "add_session_calculations",
 )
 
 from django.db.models.query import Q, F
 from django.db.models.fields import DecimalField
 
-from django.db.models.aggregates import Sum
+from django.db.models.aggregates import Avg
 
 from django.db.models.expressions import Func
 from django.db.models.expressions import Value
 from django.db.models.expressions import Subquery
 
 from analytics.models import MetaData
-from activities.models import Answered
 
 
-class ValueCalculator(object):
+def _calculate_value_weights(user, question):
     """
-    Calculation query generator.
+    Calculate the weights of the users metadata.
 
-    Creates the calculation to process the value of a answered based on
-    the currently authenticated user's meta data.
+    :param user: The current user instance
+    :type user: accounts.models.User
+
+    :type question: The question that is answered
+    :type question: activities.models.Question
+
+    :return: A queryset with the average of the weights
+    :rtype: django.db.models.query.QuerySet
+    """
+    model = question.__class__
+    sub_q = model.objects.filter(id=question.id)
+    sub_q = sub_q.value("weight")
+
+    query = MetaData.objects.filter(Q(usermeta__user=user.id))
+    query = query.values("weight").union(sub_q)
+    query = query.annotate(__result=Func("weight", function="AVG"))
+
+    return query.values("__result")
+
+
+def get_value_query(user, data, question):
+    """
+    Get the query to calculate the value of a answered value.
+
+    :param user: The current user instance
+    :type user: accounts.models.User
+
+    :param data: The actual submitted value
+    :type data: int
+
+    :type question: The question that is answered
+    :type question: activities.models.Question
+
+    :return: The query to calculate the value.
+    :rtype: django.db.models.query.QuerySet
+    """
+    weight = _calculate_value_weights(user, question)
+
+    return Value(data) * weight
+
+
+# XXX TODO: remove
+def add_session_calculations(queryset):
     """
 
-    def __call__(self, user, data):
-        """
-        Create the query to calculate the value for a answered.
+    :param queryset:
+    :return:
+    """
+    query = Avg("answered_questions__value") * F("set__weight")
+    return queryset.annotate(value=query)
 
-        :param user: The current user instance
-        :type user: accounts.models.User
-
-        :param data: The actual value of the answer
-        :type data: decimal.decimal | float | int
-
-        :return:
-        """
-        weight = self.calculate_weights(user)
-
-        return Value(data) * weight
-
-    def calculate_weights(self, user):
-        """
-        Calculate the weights of the users metadata.
-
-        :param user: The current user instance
-        :type user: accounts.models.User
-
-        :return: A queryset with the average of the weights
-        :rtype: django.db.models.query.QuerySet
-        """
-        query = MetaData.objects.filter(Q(usermeta__user=user.id))
-        query = query.annotate(__result=Func("weight", function="AVG"))
-
-        return query.values("__result")
-
-
-class AnsweredCalculator(object):
-    def __call__(self, question, company):
-        clause = Q(session__company=company.id) & Q(question=question)
-        notate = (
-            Sum(F("question__weight") * F("value"))
-            /
-            Sum("question__weight")
-        )
-
-        queryset = Answered.objects.filter(clause)
-        queryset = queryset.annotate(__result=notate)
-
-        return queryset.value("__result")
