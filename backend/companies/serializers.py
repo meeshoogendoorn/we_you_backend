@@ -10,6 +10,7 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import HyperlinkedRelatedField
 
 from accounts.utils import is_employee
+from accounts.utils import is_management
 from accounts.models import User
 
 from companies.models import Company, Member
@@ -91,3 +92,22 @@ class ColourThemeSerializer(ModelSerializer):
         queryset=Image.objects.all(),
         view_name="company-logo-detail",
     )
+
+    def get_field_names(self, declared_fields, info):
+        """
+        Filter out the 'company' field when the user is from management.
+
+        :param declared_fields: A mapping of the declared fields in order
+        :type declared_fields: collections.OrderedDict
+
+        :param info: Additional information about the current models fields
+        :type info: rest_framework.utils.model_meta.FieldInfo
+
+        :return: A sequence with the fields to serialize
+        :rtype: tuple
+        """
+        fields = ModelSerializer.get_field_names(self, declared_fields, info)
+        if not is_management(self.context["request"].user):
+            return fields
+
+        return tuple(field for field in fields if field != "company")

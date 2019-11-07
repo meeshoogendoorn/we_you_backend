@@ -11,13 +11,15 @@ import random
 from factory.faker import Faker
 from factory.django import DjangoModelFactory
 from factory.helpers import lazy_attribute
-from factory.declarations import RelatedFactory, Iterator
+from factory.declarations import SubFactory, RelatedFactory, Iterator
 
 from accounts.utils import Groups
 from accounts.models import User
 
 from companies.models import ColourTheme
 from companies.models import Member, Company
+
+from utilities.factories import ImageFactory
 
 
 class ColourThemeFactory(DjangoModelFactory):
@@ -26,6 +28,7 @@ class ColourThemeFactory(DjangoModelFactory):
     class Meta:
         model = ColourTheme
 
+    logo = SubFactory(ImageFactory)
     company = Iterator(Company.objects.all())
 
     @lazy_attribute

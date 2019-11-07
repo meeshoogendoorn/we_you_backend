@@ -22,6 +22,8 @@ from companies.models import Member
 from companies.factories import MemberFactory
 from companies.factories import CompanyFactory
 
+from utilities.factories import ImageFactory
+
 
 class TestCompanyView(URLPatternsTestCase, APITestCase):
     """Unittests for the CompanyView."""
@@ -363,6 +365,7 @@ class TestCompanyThemeView(URLPatternsTestCase, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.company = CompanyFactory()
+        cls.ignored = CompanyFactory()
 
         cls.employer = UserFactory(group=Group.objects.get(id=Groups.employer))
         cls.employee = UserFactory(group=Group.objects.get(id=Groups.employee))
@@ -385,6 +388,14 @@ class TestCompanyThemeView(URLPatternsTestCase, APITestCase):
         response = self.client.get(reverse("colour-theme-list"))
         expected = [
             {
+
+                "logo": reverse(
+                    "company-logo-detail",
+                    [self.company.theme.logo.id],
+                    None,
+                    Request(response.wsgi_request)
+                ),
+
                 "company": reverse(
                     "company-detail",
                     [self.company.id],
@@ -394,6 +405,112 @@ class TestCompanyThemeView(URLPatternsTestCase, APITestCase):
 
                 "primary": self.company.theme.primary,
                 "accent": self.company.theme.accent,
+                "id": self.company.theme.id,
+            }
+        ]
+
+        self.assertSequenceEqual(expected, response.data)
+
+    def test_list_colours_as_management(self):
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.managing_token.plain}"
+        )
+
+        response = self.client.get(reverse("colour-theme-list"))
+        expected = [
+            {
+
+                "logo": reverse(
+                    "company-logo-detail",
+                    [self.company.theme.logo.id],
+                    None,
+                    Request(response.wsgi_request)
+                ),
+
+                "primary": self.company.theme.primary,
+                "accent": self.company.theme.accent,
+                "id": self.company.theme.id,
+            },
+            {
+
+                "logo": reverse(
+                    "company-logo-detail",
+                    [self.ignored.theme.logo.id],
+                    None,
+                    Request(response.wsgi_request)
+                ),
+
+                "primary": self.ignored.theme.primary,
+                "accent": self.ignored.theme.accent,
+                "id": self.ignored.theme.id,
+            }
+        ]
+
+        self.assertSequenceEqual(expected, response.data)
+
+
+class TestCompanyLogoView(URLPatternsTestCase, APITestCase):
+    """Unittests for the Company Logo ViewSet."""
+
+    fixtures = ["groups"]
+    urlpatterns = company_urlpatterns
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.company = CompanyFactory()
+        cls.ignored = CompanyFactory()
+
+        cls.employer = UserFactory(group=Group.objects.get(id=Groups.employer))
+        cls.employee = UserFactory(group=Group.objects.get(id=Groups.employee))
+        cls.managing = UserFactory(
+            group=Group.objects.get(id=Groups.management)
+        )
+
+        cls.employee_token = AuthFactory(user=cls.employee)
+        cls.employer_token = AuthFactory(user=cls.employer)
+        cls.managing_token = AuthFactory(user=cls.managing)
+
+        MemberFactory(account=cls.employer, company=cls.company)
+        MemberFactory(account=cls.employee, company=cls.company)
+
+    def test_list_colours_as_employee(self):
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.employee_token.plain}"
+        )
+
+        response = self.client.get(reverse("company-logo-list"))
+        expected = [
+            {
+                "id": self.company.theme.logo.id,
+                "data": b'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAA'
+                        b'AACklEQVR4nGNiAAAABgADNjd8qAAAAABJRU5ErkJggg==',
+                "path": self.company.theme.logo.path,
+                "mime": "PNG",
+            }
+        ]
+
+        self.assertSequenceEqual(expected, response.data)
+
+    def test_list_colours_as_management(self):
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.managing_token.plain}"
+        )
+
+        response = self.client.get(reverse("company-logo-list"))
+        expected = [
+            {
+                "id": self.company.theme.logo.id,
+                "data": b'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAA'
+                        b'AACklEQVR4nGNiAAAABgADNjd8qAAAAABJRU5ErkJggg==',
+                "path": self.company.theme.logo.path,
+                "mime": "PNG",
+            },
+            {
+                "id": self.ignored.theme.logo.id,
+                "data": b'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAA'
+                        b'AACklEQVR4nGNiAAAABgADNjd8qAAAAABJRU5ErkJggg==',
+                "path": self.ignored.theme.logo.path,
+                "mime": "PNG",
             }
         ]
 

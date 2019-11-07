@@ -88,21 +88,22 @@ class ColourThemeViewSet(ModelViewSet):
         IsEmployer | IsEmployeeAndReadOnly | IsManagementAndReadOnly,
     )
 
-    def get_serializer(self, *args, **kwargs):
+    def filter_queryset(self, queryset):
         """
-        Overridden to add the company when possible.
+        Filter out the colour themes that aren't relevant to the user.
 
-        We can't add a company for a administrator because we
-        won't require it to have one.
+        :param queryset: The queryset to filter
+        :type queryset: django.db.models.query.QuerySet
+
+        :return: Teh filtered queryset
+        :rtype: django.db.models.query.QuerySet
         """
-        serializer_class = self.get_serializer_class()
-        kwargs["context"] = self.get_serializer_context()
+        if is_management(self.request.user):
+            return queryset
 
-        if not is_administrator(self.request.user):
-            company = self.request.user.member.company
-            kwargs = {**kwargs, "company": company}
-
-        return serializer_class(*args, **kwargs)
+        return queryset.filter(
+            company__members__account=self.request.user.id
+        )
 
 
 class CompanyLogoViewSet(ModelViewSet):
@@ -123,5 +124,5 @@ class CompanyLogoViewSet(ModelViewSet):
             return queryset
 
         return queryset.filter(
-            colourtheme__company__member__account=self.request.user
+            colourtheme__company__members__account=self.request.user
         )
