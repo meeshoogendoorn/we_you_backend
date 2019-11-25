@@ -1,12 +1,17 @@
 """Activity related views and view-sets."""
 
 __all__ = (
+    "AnswerViewSet",
+    "AnswersViewSet",
+    "SessionViewSet",
+    "AnsweredViewSet",
+    "QuestionViewSet",
+    "ReflectionViewSet",
+    "QuestionSetViewSet",
+    "QuestionThemeViewSet",
 )
 
 import datetime
-
-from django.db.models.query import F
-from django.db.models.aggregates import Avg
 
 from rest_framework.mixins import ListModelMixin
 from rest_framework.mixins import CreateModelMixin
@@ -91,10 +96,7 @@ class AnswersViewSet(ModelViewSet):
 class SessionViewSet(ModelViewSet):
     """View-set for question sessions."""
 
-    queryset = Session.objects.annotate(
-        value=Avg("answered_questions__value") * F("set__weight")
-    )
-
+    queryset = Session.objects.all()
     serializer_class = SessionSerializer
     permission_classes = (IsManagementOrReadOnly,)
 

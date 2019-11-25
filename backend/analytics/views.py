@@ -58,3 +58,15 @@ class CompanyChartsViewSet(GenericViewSet, ListModelMixin):
     def filter_queryset(self, queryset):
         return queryset.filter(id=self.request.user.member.company_id)
 
+
+class SessionChartsViewSet(GenericViewSet, ListModelMixin):
+    queryset = Session.objects.annotate(
+        data=Avg("answered_questions__value") * F("set__weight"),
+        date=Case(
+            When(until__lte=Now(), then=F("until")),
+            default=Now()
+        ),
+    )
+
+    def filter_queryset(self, queryset):
+        return queryset.filter(id=self.request.user.member.company_id)
