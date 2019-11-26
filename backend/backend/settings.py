@@ -26,7 +26,7 @@ DEBUG = True
 
 # DEPLOY: set to the correct domain name
 ALLOWED_HOSTS = [
-    "dev.meeshogendoorn.nl"
+    "dev.meeshoogendoorn.nl"
 ]
 
 
