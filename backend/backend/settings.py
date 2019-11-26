@@ -25,7 +25,9 @@ AUTH_USER_MODEL = "accounts.User"
 DEBUG = True
 
 # DEPLOY: set to the correct domain name
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "dev.meeshogendoorn.nl"
+]
 
 
 # Application definition
