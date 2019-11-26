@@ -112,6 +112,10 @@ USE_L10N = True
 USE_TZ = True
 
 
+REST_KNOX = {
+    "TOKEN_TTL": None,
+}
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "knox.auth.TokenAuthentication",
