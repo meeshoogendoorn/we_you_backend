@@ -1,6 +1,8 @@
 """Account specific REST apis"""
 
 __all__ = (
+    "UserView",
+
     "LoginView",
     "LogoutView",
 
@@ -15,10 +17,12 @@ from knox.views import LoginView as BaseLoginView
 
 from django.db.models.query import Q
 
+from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSetMixin
 from rest_framework.generics import CreateAPIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
+from rest_framework.response import Response
 from rest_framework.authentication import BasicAuthentication
 
 from accounts.utils import Groups
@@ -41,6 +45,17 @@ class LoginView(BaseLoginView):
     """Overridden login view for HTTP basic authentication."""
 
     authentication_classes = (BasicAuthentication,)
+
+
+class UserView(APIView):
+    """View-set for the user's own account."""
+
+    permission_classes = (IsAcceptable,)
+
+    def get(self, request):
+        """Seed the information about the user back."""
+        serializer = AccountSerializer(request.user)
+        return Response(serializer.data)
 
 
 class AccountViewSet(ReadOnlyModelViewSet):

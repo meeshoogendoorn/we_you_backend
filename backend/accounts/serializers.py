@@ -25,7 +25,7 @@ class AccountSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email")
+        fields = ("id", "email", "group")
 
 
 class RegisterEmployerSerializer(Serializer):
