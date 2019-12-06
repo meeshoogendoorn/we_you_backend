@@ -48,6 +48,7 @@ class CompanySerializer(ModelSerializer):
     theme = HyperlinkedRelatedReadField(
         queryset=ColourTheme.objects.all(),
         view_name="colour-theme-detail",
+        read_only=True,
     )
 
     members = HyperlinkedRelatedReadField(

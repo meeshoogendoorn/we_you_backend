@@ -11,11 +11,11 @@ from rest_framework.viewsets import ModelViewSet
 
 from accounts.utils import is_employee
 from accounts.utils import is_management
-from accounts.utils import is_administrator
 
 from accounts.permissions import IsEmployer
 from accounts.permissions import IsAcceptable
 from accounts.permissions import IsEmployeeAndReadOnly
+from accounts.permissions import IsManagementOrReadOnly
 from accounts.permissions import IsManagementAndReadOnly
 
 from companies.models import ColourTheme
@@ -60,7 +60,7 @@ class CompanyViewSet(ModelViewSet):
 
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
-    permission_classes = (IsAcceptable,)
+    permission_classes = (IsManagementOrReadOnly,)
 
     def filter_queryset(self, queryset):
         """
