@@ -23,9 +23,9 @@ router.register(
 )
 
 router.register(
-    "register-employer",
+    "register-employers",
     RegisterEmployerViewSet,
-    "register-employer"
+    "register-employers"
 )
 
 router.register(
