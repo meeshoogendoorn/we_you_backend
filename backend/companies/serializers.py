@@ -89,6 +89,7 @@ class ColourThemeSerializer(ModelSerializer):
     )
 
     logo = HyperlinkedRelatedReadField(
+        required=False,
         queryset=Image.objects.all(),
         view_name="company-logo-detail",
     )
