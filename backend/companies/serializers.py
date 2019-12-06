@@ -52,7 +52,7 @@ class CompanySerializer(ModelSerializer):
 
     members = HyperlinkedRelatedReadField(
         many=True,
-        queryset=Member.objects.all(),
+        read_only=True,
         view_name="member-detail",
     )
 
