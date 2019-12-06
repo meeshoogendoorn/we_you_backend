@@ -226,7 +226,10 @@ class IsManagementOrReadOnly(IsAuthenticated):
         if not IsAuthenticated.has_permission(self, request, view):
             return False
 
-        if is_employee(request.user) or is_employer(request.user):
+        if (
+                is_employee(request.user, False) or
+                is_employer(request.user, False)
+        ):
             return request.method.upper() in (
                 'GET', 'HEAD', 'OPTIONS', 'TRACE'
             )
@@ -256,9 +259,12 @@ class IsEmployeeOrReadOnly(IsAuthenticated):
         if not IsAuthenticated.has_permission(self, request, view):
             return False
 
-        if is_employee(request.user) or is_employer(request.user):
+        if (
+                is_management(request.user, False) or
+                is_employer(request.user, False)
+        ):
             return request.method.upper() in (
                 'GET', 'HEAD', 'OPTIONS', 'TRACE'
             )
 
-        return is_management(request.user)
+        return is_employee(request.user)
