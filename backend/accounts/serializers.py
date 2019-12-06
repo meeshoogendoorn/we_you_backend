@@ -6,18 +6,15 @@ __all__ = (
     "RegisterEmployeesSerializer",
 )
 
-from django.conf import settings
-from django.core.mail import send_mail
-
 from rest_framework.serializers import PrimaryKeyRelatedField
 from rest_framework.serializers import ListSerializer, Serializer
 from rest_framework.serializers import ModelSerializer, EmailField
 
-from accounts.models import User
+from accounts.utils import Groups
+from accounts.models import Group, User
 from companies.models import Company
 
 from communications.utils import MultiMailTransport
-from communications.models import Environment, Email
 
 
 class AccountSerializer(ModelSerializer):
@@ -34,7 +31,7 @@ class RegisterEmployerSerializer(Serializer):
     update = None
     create = None
 
-    address = EmailField()
+    members = ListSerializer(child=EmailField())
     company = PrimaryKeyRelatedField(queryset=Company.objects.all())
 
     def save(self, **kwargs):
@@ -47,33 +44,41 @@ class RegisterEmployerSerializer(Serializer):
         :return: The registered
         :rtype: accounts.models.User
         """
+        group = Group.objects.get(id=Groups.employer)
+
         company = self.validated_data["company"]
-        address = self.validated_data["address"]
+        members = self.validated_data["members"]
 
-        environ = Environment.objects.get(id=2)
-        handler = Email.objects.select_email(environ, company)
+        transport = MultiMailTransport({"company": company.name}, 2, company)
 
+        seeder = (transport(*self.employ(a, company, group)) for a in members)
+        return transport.finish(seeder)
+
+    @staticmethod
+    def employ(account, company, group):
+        """
+        Create and initialize a single employer.
+
+        :param company: The company to employ the user for
+        :type company: companies.models.Company
+
+        :param account: The email address to create the account for
+        :type account: str
+
+        :param group: The group to assign the user to
+        :type group: django.contrib.models.Group
+
+        :return: The parameters to the transport
+        :rtype: tuple
+        """
         password = User.objects.make_random_password(12)
-        instance = User.objects.create_user(address, password)
+        instance = User.objects.create_user(email=account, password=password)
+        receiver = instance.email
 
-        instance.group = 3
+        instance.group = group
         instance.member.create(company=company)
 
-        context = {
-            "email": address,
-            "company": company.name,
-            "password": password,
-        }
-
-        subject = handler.subject
-        content = handler.process_content(context)
-
-        send_mail(
-            subject, content,
-            settings.DEFAULT_FROM_EMAIL, [address]
-        )
-
-        return instance
+        return receiver, {"email": receiver, "password": password}
 
 
 class RegisterEmployeesSerializer(Serializer):
@@ -95,17 +100,18 @@ class RegisterEmployeesSerializer(Serializer):
         :return: The number of send emails
         :rtype: int
         """
+        group = Group.objects.get(id=Groups.employee)
 
         company = self.validated_data["company"]
         members = self.validated_data["members"]
 
         transport = MultiMailTransport({"company": company.name}, 1, company)
 
-        seeder = (transport(*self.employ(a, company)) for a in members)
+        seeder = (transport(*self.employ(a, company, group)) for a in members)
         return transport.finish(seeder)
 
     @staticmethod
-    def employ(account, company):
+    def employ(account, company, group):
         """
         Create and initialize a single employee.
 
@@ -115,6 +121,9 @@ class RegisterEmployeesSerializer(Serializer):
         :param account: The email address to create the account for
         :type account: str
 
+        :param group: The group to assign the user to
+        :type group: django.contrib.models.Group
+
         :return: The parameters to the transport
         :rtype: tuple
         """
@@ -122,7 +131,7 @@ class RegisterEmployeesSerializer(Serializer):
         instance = User.objects.create_user(email=account, password=password)
         receiver = instance.email
 
-        instance.group = 3
+        instance.group = group
         instance.member.create(company=company)
 
         return receiver, {"email": receiver, "password": password}
