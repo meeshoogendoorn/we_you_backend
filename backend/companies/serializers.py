@@ -46,9 +46,8 @@ class CompanySerializer(ModelSerializer):
         fields = ("id", "name", "theme", "members")
 
     theme = HyperlinkedRelatedReadField(
-        queryset=ColourTheme.objects.all(),
-        view_name="colour-theme-detail",
         read_only=True,
+        view_name="colour-theme-detail",
     )
 
     members = HyperlinkedRelatedReadField(
