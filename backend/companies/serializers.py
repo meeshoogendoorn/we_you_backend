@@ -89,9 +89,9 @@ class ColourThemeSerializer(ModelSerializer):
     )
 
     logo = HyperlinkedRelatedReadField(
-        required=False,
         queryset=Image.objects.all(),
         view_name="company-logo-detail",
+        allow_null=True,
     )
 
     def get_extra_kwargs(self):
