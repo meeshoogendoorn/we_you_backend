@@ -100,9 +100,10 @@ class AnswersViewSet(ModelViewSet):
 class AnswerStylesViewSet(GenericViewSet, ListModelMixin):
     """View set for read only styles."""
 
-    queryset = AnswerStyle.objects.all(),
+    queryset = AnswerStyle.objects.all()
     serializer_class = AnswerStyleSerializer
     permission_classes = (IsAcceptable,)
+
 
 class SessionViewSet(ModelViewSet):
     """View-set for question sessions."""
