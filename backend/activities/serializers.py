@@ -8,6 +8,7 @@ __all__ = (
     "QuestionSerializer",
     "ReflectionSerializer",
     "QuestionSetSerializer",
+    "AnswerStyleSerializer",
     "QuestionThemeSerializer",
 )
 
@@ -23,6 +24,7 @@ from rest_framework.serializers import CurrentUserDefault
 from activities.models import Answer
 from activities.models import Answers
 from activities.models import Answered
+from activities.models import AnswerStyle
 from activities.models import Session
 from activities.models import Question
 from activities.models import Reflection
@@ -96,6 +98,14 @@ class AnswersSerializer(ModelSerializer):
         queryset=Answer.objects.filter(deleted__isnull=True),
         view_name="",
     )
+
+
+class AnswerStyleSerializer(ModelSerializer):
+    """Serializer for answer styles."""
+
+    class Meta:
+        model = AnswerStyle
+        fields = ("id", "label")
 
 
 class SessionSerializer(ModelSerializer):

@@ -8,6 +8,7 @@ __all__ = (
     "QuestionViewSet",
     "ReflectionViewSet",
     "QuestionSetViewSet",
+    "AnswerStylesViewSet",
     "QuestionThemeViewSet",
 )
 
@@ -21,6 +22,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.viewsets import GenericViewSet
 
 from accounts.utils import is_management
+from accounts.permissions import IsAcceptable
 from accounts.permissions import IsEmployeeOrReadOnly
 from accounts.permissions import IsManagementOrReadOnly
 
@@ -30,6 +32,7 @@ from activities.models import Answered
 from activities.models import Session
 from activities.models import Question
 from activities.models import Reflection
+from activities.models import AnswerStyle
 from activities.models import QuestionSet
 from activities.models import QuestionTheme
 
@@ -40,6 +43,7 @@ from activities.serializers import QuestionSerializer
 from activities.serializers import AnsweredSerializer
 from activities.serializers import ReflectionSerializer
 from activities.serializers import QuestionSetSerializer
+from activities.serializers import AnswerStyleSerializer
 from activities.serializers import QuestionThemeSerializer
 
 
@@ -92,6 +96,13 @@ class AnswersViewSet(ModelViewSet):
     serializer_class = AnswersSerializer
     permission_classes = (IsManagementOrReadOnly,)
 
+
+class AnswerStylesViewSet(GenericViewSet, ListModelMixin):
+    """View set for read only styles."""
+
+    queryset = AnswerStyle.objects.all(),
+    serializer_class = AnswerStyleSerializer
+    permission_classes = (IsAcceptable,)
 
 class SessionViewSet(ModelViewSet):
     """View-set for question sessions."""

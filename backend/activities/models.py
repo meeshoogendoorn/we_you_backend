@@ -4,6 +4,7 @@ __all__ = (
     "Answer",
     "Answers",
     "Answered",
+    "AnswerStyle",
 
     "Session",
     "Question",
